@@ -1,63 +1,106 @@
 # Cookie Training
 
 A simple exercise journal for tracking training sessions: a public feed and
-an editing screen for logging new sessions.
+an editing screen for logging new sessions, backed by [Payload
+CMS](https://payloadcms.com) — self-hosted, embedded directly in this
+Next.js app, with a SQLite database file (no external services to set up).
 
 ## Getting started
 
 ```bash
 npm install
+cp .env.example .env.local   # then fill in a real PAYLOAD_SECRET (see comment in the file)
+npm run seed                 # creates an admin user + the sample exercises/sessions/media
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) for the feed, and
-[http://localhost:3000/sessions](http://localhost:3000/sessions) for the
-editing screen.
+- [http://localhost:3000](http://localhost:3000) — the public feed
+- [http://localhost:3000/sessions](http://localhost:3000/sessions) — quick
+  add/edit screen (requires login)
+- [http://localhost:3000/admin](http://localhost:3000/admin) — the full
+  Payload admin: manage exercises, sessions, media, and users directly
+
+`npm run seed` prints the admin login it creates
+(`admin@cookietraining.test` / `cookie-admin-pass` by default — override
+with `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`). Log in and change the
+password before using this for real. It's safe to re-run; it skips content
+seeding if any exercise already exists.
 
 ## Screens
 
-- **`/` — Training Feed.** A chronological, filterable feed of sessions.
-  Each session shows its exercise, ratings, a trend vs. the previous
-  session for that same exercise, and its media (video/photo) items.
-- **`/sessions` — Sessions.** List of all sessions plus a form to add or
-  edit one: exercise, date/time, flexible ratings, sets/reps/rest,
-  notes, and media items (upload, caption, reorder, remove).
+- **`/` — Training Feed.** Public, no login needed. A chronological,
+  filterable feed of sessions. Each session shows its exercise, ratings, a
+  trend vs. the previous session for that same exercise, and its media
+  (video/photo) items.
+- **`/sessions` — Sessions.** Requires login. List of all sessions plus a
+  form to add or edit one: exercise, date/time, flexible ratings,
+  sets/reps/rest, notes, and media items (upload, caption, reorder,
+  remove). Logged out, this screen shows a gate linking to `/admin/login`
+  instead.
+- **`/admin` — Payload's admin panel.** The full CMS: manage the Exercise
+  taxonomy, edit/delete any Session or Media doc directly, manage users.
+  This is where you'd add a brand-new exercise type before it shows up in
+  the `/sessions` dropdown.
 
 ## Data model
 
-Defined in `src/lib/types.ts`:
+App-level types are in `src/lib/types.ts`; the matching Payload collections
+are in `src/collections/`:
 
-- **Exercise** — the reusable exercise definition (name, category, focus,
-  default rating dimensions).
-- **TrainingSession** — one instance of performing an exercise: ratings,
-  sets/reps/rest, notes, and its media items.
-- **MediaItem** — a video or image belonging to a session (label, notes,
-  order). Sets, videos, and photos are all just media items — there's no
-  separate concept for each.
-- **RatingDimension** — ratings are a flexible list of `{ key, label,
-  score, max }`, not fixed columns, so different exercises can define
-  different dimensions later without a schema change.
+- **Exercise** (`src/collections/Exercises.ts`) — the reusable exercise
+  definition (name, category, focus, default rating dimensions).
+- **Session** (`src/collections/Sessions.ts`) — one instance of performing
+  an exercise: a relationship to its exercise, ratings, sets/reps/rest,
+  notes, and an array of media items.
+- **Media** (`src/collections/Media.ts`) — Payload's built-in upload
+  collection; video/image files live here. A session's `media` array field
+  references Media docs plus per-item label/notes/order — so sets, videos,
+  and photos are all just media items, no separate concept for each.
+- **Ratings** are a flexible array of `{ key, label, score, max }` on the
+  session, not fixed columns, so different exercises could use different
+  rating dimensions without a schema change.
+- **Users** (`src/collections/Users.ts`) — Payload's auth collection,
+  used for `/admin` and for gating writes from `/sessions`.
 
-Right now everything is stored in the browser's `localStorage`, seeded from
-`src/lib/seed-data.ts` on first load. There's no server-side persistence or
-real file storage yet — uploaded media only lives as an in-browser object
-URL for the current session.
+## How the app talks to the CMS
 
-## Connecting a real CMS later
+Nothing outside `src/lib/data-source.ts`, `src/lib/payload-client.ts`, and
+`src/lib/payload-mappers.ts` knows Payload's document shape — every screen
+just works with the CMS-agnostic types in `types.ts`. Concretely:
 
-All reads/writes go through `src/lib/data-source.ts` — `getExercises()`,
-`getSessions()`, `saveSession()`, `deleteSession()`. Nothing else in the
-app touches storage directly. To swap in a headless CMS (Sanity,
-Contentful, Payload, etc.):
+- `payload-client.ts` is a thin `fetch()` wrapper around Payload's
+  auto-generated REST API (`/api/exercises`, `/api/sessions`,
+  `/api/media`, `/api/users/me`, ...). Requests are same-origin, so the
+  browser sends Payload's `payload-token` auth cookie automatically once
+  you've logged in at `/admin/login`.
+- `payload-mappers.ts` converts between Payload's generated types
+  (`src/payload-types.ts`, regenerate with `npm run generate:types` after
+  changing a collection) and this app's `Exercise` / `TrainingSession` /
+  `MediaItem` types.
+- `data-source.ts` is the public API the rest of the app calls:
+  `getExercises()`, `getSessions()`, `saveSession()`, `deleteSession()`.
+- Reads are public (anyone can view the feed); creating, updating, or
+  deleting requires a logged-in user — enforced both in the UI (the
+  `/sessions` gate) and, more importantly, in each collection's `access`
+  config in `src/collections/`, so it's enforced at the API regardless of
+  what the UI does.
+- Uploading a file (`src/lib/media-utils.ts`) POSTs it straight to
+  `/api/media` and gets back a real asset id + URL, which is then
+  referenced when the session is saved.
 
-1. Create matching content types for `Exercise`, `TrainingSession`, and
-   `MediaItem` (the shapes in `src/lib/types.ts` map directly to CMS
-   schemas/fields).
-2. Replace the bodies of the functions in `data-source.ts` with calls to
-   the CMS's SDK/API (fetching sessions, and creating/updating a session +
-   its media on save). Keep the same function signatures.
-3. Add file/asset upload to the CMS's media library in place of
-   `URL.createObjectURL()` in `src/lib/media-utils.ts`.
+## Project layout notes
 
-Because every screen already reads through this one module, this is a
-localized change — no component changes needed.
+- Payload renders its own `<html>`/`<body>` for `/admin`, so the app is
+  split into two Next.js route groups, each with its own root layout:
+  `src/app/(app)/` (the feed + sessions screens, our fonts/theme) and
+  `src/app/(payload)/` (the admin panel + the `/api/*` REST routes).
+- `src/payload.config.ts` is the CMS config (collections, SQLite adapter,
+  secret). `DATABASE_URI` in `.env.local` points at a local SQLite file
+  (`cookie-training.db`); uploaded files land in `/media`. Both are
+  gitignored — back them up like you would any other database + uploads
+  directory if this goes to production.
+- `src/seed.ts` (`npm run seed`) is the one-time content seed described
+  above; `src/seed-assets.ts` is a tiny hand-rolled PNG generator used
+  only to give the seeded sessions real (if plain) placeholder images
+  without needing real video files. Upload real clips through the
+  `/sessions` form or `/admin` to replace them.

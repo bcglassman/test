@@ -17,6 +17,13 @@ export interface MediaItem {
   /** Display duration for videos, e.g. "0:12". */
   duration?: string;
   order: number;
+  /**
+   * The CMS's own id for the uploaded asset (e.g. Payload's `media`
+   * collection doc id). Set once the file has actually been uploaded to
+   * the CMS; used when saving a session to reference the asset. Not
+   * meaningful for display.
+   */
+  fileId?: string;
 }
 
 export interface RatingDimension {

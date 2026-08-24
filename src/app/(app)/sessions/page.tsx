@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Header } from "@/components/Header";
 import { SessionsSidebar } from "@/components/admin/SessionsSidebar";
 import { SessionForm } from "@/components/admin/SessionForm";
@@ -8,7 +9,8 @@ import { useSessions } from "@/lib/sessions-context";
 import type { TrainingSession } from "@/lib/types";
 
 export default function SessionsAdminPage() {
-  const { sessions, exercises, loading, saveSession, deleteSession } = useSessions();
+  const { sessions, exercises, loading, saveSession, deleteSession, user, authLoading } =
+    useSessions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<"edit" | "new">("new");
   // Bumped on every request for a blank form, so the form remounts (and
@@ -34,8 +36,8 @@ export default function SessionsAdminPage() {
       : null;
 
   async function handleSave(session: TrainingSession) {
-    await saveSession(session);
-    setSelectedId(session.id);
+    const saved = await saveSession(session);
+    setSelectedId(saved.id);
     setMode("edit");
   }
 
@@ -47,12 +49,50 @@ export default function SessionsAdminPage() {
     }
   }
 
-  if (loading || exercises.length === 0) {
+  if (loading || authLoading) {
     return (
       <div className="flex min-h-screen flex-col">
         <Header active="sessions" />
         <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16 text-center text-sm text-[var(--color-ink-soft)]">
           Loading…
+        </main>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Header active="sessions" />
+        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+          <h1 className="font-serif text-2xl text-[var(--color-ink)]">
+            Log in to add or edit sessions
+          </h1>
+          <p className="mt-2 max-w-sm text-sm text-[var(--color-ink-soft)]">
+            The training feed is open to everyone, but logging a session
+            requires an account.
+          </p>
+          <Link
+            href="/admin/login"
+            className="mt-6 rounded-full bg-[var(--color-sage)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-sage-dark)]"
+          >
+            Log in
+          </Link>
+        </main>
+      </div>
+    );
+  }
+
+  if (exercises.length === 0) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Header active="sessions" />
+        <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16 text-center text-sm text-[var(--color-ink-soft)]">
+          No exercises yet — add one in the{" "}
+          <Link href="/admin/collections/exercises" className="underline">
+            admin panel
+          </Link>{" "}
+          before logging a session.
         </main>
       </div>
     );

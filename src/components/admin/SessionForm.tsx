@@ -5,7 +5,6 @@ import type { Exercise, MediaItem, RatingDimension, TrainingSession } from "@/li
 import { CategoryIcon, UploadIcon } from "@/components/icons";
 import { MediaEditorCard } from "./MediaEditorCard";
 import { mediaFromFile } from "@/lib/media-utils";
-import { newSessionId } from "@/lib/data-source";
 
 const REST_PRESETS = ["None", "~30 sec", "~45 sec", "~60 sec", "~90 sec", "~2 min", "~5 min", "~10 min"];
 
@@ -19,7 +18,9 @@ function toDateTimeLocal(iso: string) {
 
 function blankFromExercise(exercise: Exercise): TrainingSession {
   return {
-    id: newSessionId(),
+    // Empty id marks a session that hasn't been created in the CMS yet;
+    // saveSession() uses this to decide POST (create) vs PATCH (update).
+    id: "",
     exerciseId: exercise.id,
     date: toDateTimeLocal(new Date().toISOString()),
     ratings: exercise.defaultRatings.map((r) => ({ ...r, score: Math.round(r.max / 2) })),
@@ -39,7 +40,7 @@ export function SessionForm({
 }: {
   exercises: Exercise[];
   session: TrainingSession | null;
-  onSave: (session: TrainingSession) => void;
+  onSave: (session: TrainingSession) => Promise<void>;
   onCancel: () => void;
 }) {
   const [form, setForm] = useState<TrainingSession>(() =>
@@ -47,6 +48,9 @@ export function SessionForm({
       ? { ...session, date: toDateTimeLocal(session.date) }
       : blankFromExercise(exercises[0]),
   );
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const exercise = exercises.find((e) => e.id === form.exerciseId) ?? exercises[0];
@@ -74,13 +78,22 @@ export function SessionForm({
     }));
   }
 
-  function handleFiles(files: FileList | null) {
+  async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const nextOrder = form.media.length + 1;
-    const added: MediaItem[] = Array.from(files).map((file, i) =>
-      mediaFromFile(file, nextOrder + i),
-    );
-    setForm((f) => ({ ...f, media: [...f.media, ...added] }));
+    setError(null);
+    setIsUploading(true);
+    try {
+      const nextOrder = form.media.length + 1;
+      const added: MediaItem[] = [];
+      for (const [i, file] of Array.from(files).entries()) {
+        added.push(await mediaFromFile(file, nextOrder + i));
+      }
+      setForm((f) => ({ ...f, media: [...f.media, ...added] }));
+    } catch {
+      setError("Couldn't upload that file. Make sure you're logged in.");
+    } finally {
+      setIsUploading(false);
+    }
   }
 
   function updateMedia(id: string, patch: Partial<MediaItem>) {
@@ -107,9 +120,17 @@ export function SessionForm({
     });
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSave({ ...form, date: new Date(form.date).toISOString() });
+    setError(null);
+    setIsSaving(true);
+    try {
+      await onSave({ ...form, date: new Date(form.date).toISOString() });
+    } catch {
+      setError("Couldn't save this session. Make sure you're logged in.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const sortedMedia = form.media.slice().sort((a, b) => a.order - b.order);
@@ -267,14 +288,21 @@ export function SessionForm({
           ))}
           <button
             type="button"
+            disabled={isUploading}
             onClick={() => fileInputRef.current?.click()}
-            className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--color-border)] p-3 text-center text-[var(--color-ink-soft)] hover:border-[var(--color-sage)] hover:text-[var(--color-sage-dark)]"
+            className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--color-border)] p-3 text-center text-[var(--color-ink-soft)] hover:border-[var(--color-sage)] hover:text-[var(--color-sage-dark)] disabled:opacity-50"
           >
             <UploadIcon className="h-6 w-6" />
             <span className="text-xs leading-snug">
-              Upload video or image
-              <br />
-              MP4, MOV, JPG, PNG
+              {isUploading ? (
+                "Uploading…"
+              ) : (
+                <>
+                  Upload video or image
+                  <br />
+                  MP4, MOV, JPG, PNG
+                </>
+              )}
             </span>
           </button>
           <input
@@ -291,12 +319,19 @@ export function SessionForm({
         </div>
       </div>
 
+      {error && (
+        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-[var(--color-down)]">
+          {error}
+        </p>
+      )}
+
       <div className="mt-8 flex gap-3">
         <button
           type="submit"
-          className="rounded-full bg-[var(--color-sage)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-sage-dark)]"
+          disabled={isSaving || isUploading}
+          className="rounded-full bg-[var(--color-sage)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-sage-dark)] disabled:opacity-50"
         >
-          Save Session
+          {isSaving ? "Saving…" : "Save Session"}
         </button>
         <button
           type="button"

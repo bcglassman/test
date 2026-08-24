@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { InfoIcon, PawIcon } from "./icons";
+import { useSessions } from "@/lib/sessions-context";
 
 export function Header({ active }: { active: "feed" | "sessions" }) {
+  const { user, authLoading, logout } = useSessions();
+
   return (
     <header className="border-b border-[var(--color-border)] bg-[var(--color-cream)]">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
@@ -28,16 +33,35 @@ export function Header({ active }: { active: "feed" | "sessions" }) {
             <InfoIcon className="h-4 w-4" />
             About
           </button>
+
           <Link
-            href="/sessions"
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              active === "sessions"
-                ? "bg-[var(--color-sage-dark)] text-white"
-                : "bg-[var(--color-sage)] text-white hover:bg-[var(--color-sage-dark)]"
-            }`}
+            href={active === "sessions" ? "/" : "/sessions"}
+            className="text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
           >
-            {active === "sessions" ? "View Feed" : "Log in"}
+            {active === "sessions" ? "View Feed" : "Sessions"}
           </Link>
+
+          {!authLoading && user ? (
+            <div className="flex items-center gap-3">
+              <span className="hidden text-sm text-[var(--color-ink-soft)] sm:inline">
+                {user.email}
+              </span>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-ink)] hover:bg-white"
+              >
+                Log out
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/admin/login"
+              className="rounded-full bg-[var(--color-sage)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-sage-dark)]"
+            >
+              Log in
+            </Link>
+          )}
         </div>
       </div>
     </header>
