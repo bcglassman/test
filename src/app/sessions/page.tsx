@@ -11,6 +11,10 @@ export default function SessionsAdminPage() {
   const { sessions, exercises, loading, saveSession, deleteSession } = useSessions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<"edit" | "new">("new");
+  // Bumped on every request for a blank form, so the form remounts (and
+  // clears) even when clicking "Add session" or "Cancel" while already
+  // in new mode, where selectedId/mode wouldn't otherwise change.
+  const [newFormKey, setNewFormKey] = useState(0);
 
   const selected = sessions.find((s) => s.id === selectedId) ?? null;
   const activeSession: TrainingSession | null =
@@ -68,17 +72,19 @@ export default function SessionsAdminPage() {
           onAddNew={() => {
             setSelectedId(null);
             setMode("new");
+            setNewFormKey((k) => k + 1);
           }}
           onDelete={handleDelete}
         />
         <SessionForm
-          key={mode === "edit" ? selectedId ?? "new" : "new"}
+          key={mode === "edit" ? selectedId ?? "new" : `new-${newFormKey}`}
           exercises={exercises}
           session={activeSession}
           onSave={handleSave}
           onCancel={() => {
             setSelectedId(null);
             setMode("new");
+            setNewFormKey((k) => k + 1);
           }}
         />
       </main>
