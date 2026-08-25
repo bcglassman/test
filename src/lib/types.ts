@@ -8,6 +8,8 @@ export type MediaType = "video" | "image";
 export interface MediaItem {
   id: string;
   type: MediaType;
+  /** Which set of the session this clip/photo belongs to. */
+  setNumber: number;
   /** Object URL (local upload) or remote asset URL from a CMS. */
   url: string;
   /** Short caption shown as a chip, e.g. "Set 1" or "Annotated frame". */

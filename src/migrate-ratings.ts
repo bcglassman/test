@@ -25,9 +25,28 @@ interface OldRating {
   score: number;
 }
 
+interface OldMediaRow {
+  type: "video" | "image";
+  file: number;
+  label?: string | null;
+  notes?: string | null;
+  duration?: string | null;
+  order?: number | null;
+}
+
 interface OldSessionDoc {
   id: number;
   ratings?: OldRating[];
+  media?: OldMediaRow[];
+}
+
+/**
+ * Media used to float free of any set. Recover the set from a "Set N" label
+ * where one exists, otherwise put it on set 1 so nothing is orphaned.
+ */
+function setNumberFor(row: OldMediaRow): number {
+  const match = /set\s*(\d+)/i.exec(row.label ?? "");
+  return match ? Number(match[1]) : 1;
 }
 
 async function main() {
@@ -46,27 +65,40 @@ async function main() {
   let migrated = 0;
   let skipped = 0;
   for (const doc of backup.docs) {
-    if (!doc.ratings || doc.ratings.length === 0) {
+    const hasRatings = doc.ratings && doc.ratings.length > 0;
+    const hasMedia = doc.media && doc.media.length > 0;
+    if (!hasRatings && !hasMedia) {
       skipped++;
       continue;
     }
-    await payload.update({
-      collection: "sessions",
-      id: doc.id,
-      data: {
-        ratingSets: [
-          {
-            setNumber: 1,
-            ratings: doc.ratings.map((r) => ({ key: r.key, score: r.score })),
-          },
-        ],
-      },
-    });
+
+    const data: Record<string, unknown> = {};
+    if (hasRatings) {
+      data.ratingSets = [
+        {
+          setNumber: 1,
+          ratings: doc.ratings!.map((r) => ({ key: r.key, score: r.score })),
+        },
+      ];
+    }
+    if (hasMedia) {
+      data.media = doc.media!.map((m, i) => ({
+        setNumber: setNumberFor(m),
+        type: m.type,
+        file: m.file,
+        label: m.label ?? null,
+        notes: m.notes ?? null,
+        duration: m.duration ?? null,
+        order: m.order ?? i + 1,
+      }));
+    }
+
+    await payload.update({ collection: "sessions", id: doc.id, data });
     migrated++;
   }
 
   payload.logger.info(
-    `Migrated ${migrated} session(s) to ratingSets, skipped ${skipped} (no ratings data).`,
+    `Migrated ${migrated} session(s), skipped ${skipped} (nothing to carry over).`,
   );
   process.exit(0);
 }

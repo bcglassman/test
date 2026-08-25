@@ -18,6 +18,7 @@ export function MediaEditorCard({
   onMove,
   isFirst,
   isLast,
+  setCount,
 }: {
   media: MediaItem;
   onChange: (patch: Partial<MediaItem>) => void;
@@ -25,6 +26,8 @@ export function MediaEditorCard({
   onMove: (direction: "up" | "down") => void;
   isFirst: boolean;
   isLast: boolean;
+  /** How many sets this session has, so this item can be reassigned. */
+  setCount: number;
 }) {
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3">
@@ -86,6 +89,20 @@ export function MediaEditorCard({
         placeholder="Note for this clip"
         className="mb-2 w-full rounded-md border border-[var(--color-border)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-sage)]"
       />
+      <label className="mb-2 flex items-center gap-1.5 text-xs text-[var(--color-ink-soft)]">
+        Set
+        <select
+          value={media.setNumber}
+          onChange={(e) => onChange({ setNumber: Number(e.target.value) })}
+          className="flex-1 rounded-md border border-[var(--color-border)] px-2 py-1.5 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-sage)]"
+        >
+          {Array.from({ length: setCount }, (_, i) => i + 1).map((n) => (
+            <option key={n} value={n}>
+              Set {n}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <button
         type="button"

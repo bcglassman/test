@@ -26,6 +26,7 @@ function localMediaId(): string {
 export async function mediaFromFile(
   file: File,
   order: number,
+  setNumber: number,
   onCompressProgress?: (fraction: number) => void,
 ): Promise<MediaItem> {
   const type: MediaType = file.type.startsWith("video") ? "video" : "image";
@@ -37,9 +38,10 @@ export async function mediaFromFile(
   return {
     id: localMediaId(),
     type,
+    setNumber,
     url: doc.url ?? "",
     fileId: String(doc.id),
-    label: type === "video" ? "New clip" : "New image",
+    label: `Set ${setNumber}`,
     notes: "",
     order,
   };

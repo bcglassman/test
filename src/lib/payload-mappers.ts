@@ -69,6 +69,7 @@ function mapMediaItem(
   return {
     id: item.id ?? `row-${index}`,
     type: item.type,
+    setNumber: item.setNumber,
     url: mediaURL(item.file),
     fileId: mediaFileId(item.file),
     label: item.label ?? "",
@@ -121,6 +122,7 @@ export function sessionToPayloadBody(session: TrainingSession) {
     media: session.media
       .filter((m) => m.fileId)
       .map((m) => ({
+        setNumber: m.setNumber,
         type: m.type,
         file: Number(m.fileId),
         label: m.label,

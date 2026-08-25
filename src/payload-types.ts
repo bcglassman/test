@@ -207,10 +207,14 @@ export interface Session {
   restLabel?: string | null;
   notes?: string | null;
   /**
-   * Videos/photos belonging to this session, in order.
+   * Videos/photos belonging to this session, in order. Each one belongs to a specific set.
    */
   media?:
     | {
+        /**
+         * Which set this clip/photo was taken during.
+         */
+        setNumber: number;
         type: 'video' | 'image';
         file: number | Media;
         label?: string | null;
@@ -395,6 +399,7 @@ export interface SessionsSelect<T extends boolean = true> {
   media?:
     | T
     | {
+        setNumber?: T;
         type?: T;
         file?: T;
         label?: T;

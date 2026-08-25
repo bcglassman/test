@@ -79,9 +79,12 @@ export function SessionForm({
   });
   const [isUploading, setIsUploading] = useState(false);
   const [compressPercent, setCompressPercent] = useState<number | null>(null);
+  const [uploadingSet, setUploadingSet] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Which set's "Add to set" button opened the (single, shared) file picker.
+  const pendingSetRef = useRef<number>(1);
 
   const exercise = exercises.find((e) => e.id === form.exerciseId) ?? exercises[0];
 
@@ -107,23 +110,30 @@ export function SessionForm({
   }
 
   function handleSetsChange(value: number | undefined) {
+    const count = Math.max(value ?? 1, 1);
     setForm((f) => ({
       ...f,
       sets: value,
-      ratingSets: ratingSetsForExercise(exercise, f.ratingSets, Math.max(value ?? 1, 1)),
+      ratingSets: ratingSetsForExercise(exercise, f.ratingSets, count),
+      // Dropping sets would otherwise strand media on a set that no longer
+      // exists; pull those items back to the last remaining set.
+      media: f.media.map((m) =>
+        m.setNumber > count ? { ...m, setNumber: count } : m,
+      ),
     }));
   }
 
-  async function handleFiles(files: FileList | null) {
+  async function handleFiles(files: FileList | null, setNumber: number) {
     if (!files || files.length === 0) return;
     setError(null);
     setIsUploading(true);
+    setUploadingSet(setNumber);
     try {
       const nextOrder = form.media.length + 1;
       const added: MediaItem[] = [];
       for (const [i, file] of Array.from(files).entries()) {
         added.push(
-          await mediaFromFile(file, nextOrder + i, (fraction) =>
+          await mediaFromFile(file, nextOrder + i, setNumber, (fraction) =>
             setCompressPercent(Math.round(fraction * 100)),
           ),
         );
@@ -134,6 +144,7 @@ export function SessionForm({
       setError("Couldn't upload that file. Make sure you're logged in.");
     } finally {
       setIsUploading(false);
+      setUploadingSet(null);
       setCompressPercent(null);
     }
   }
@@ -149,16 +160,28 @@ export function SessionForm({
     setForm((f) => ({ ...f, media: f.media.filter((m) => m.id !== id) }));
   }
 
+  /** Reorders within the item's own set — media is grouped by set. */
   function moveMedia(id: string, direction: "up" | "down") {
     setForm((f) => {
-      const sorted = f.media.slice().sort((a, b) => a.order - b.order);
-      const idx = sorted.findIndex((m) => m.id === id);
+      const target = f.media.find((m) => m.id === id);
+      if (!target) return f;
+      const siblings = f.media
+        .filter((m) => m.setNumber === target.setNumber)
+        .sort((a, b) => a.order - b.order);
+      const idx = siblings.findIndex((m) => m.id === id);
       const swapWith = direction === "up" ? idx - 1 : idx + 1;
-      if (swapWith < 0 || swapWith >= sorted.length) return f;
-      const a = sorted[idx];
-      const b = sorted[swapWith];
-      [a.order, b.order] = [b.order, a.order];
-      return { ...f, media: sorted };
+      if (swapWith < 0 || swapWith >= siblings.length) return f;
+      const [a, b] = [siblings[idx], siblings[swapWith]];
+      const swapped = new Map([
+        [a.id, b.order],
+        [b.id, a.order],
+      ]);
+      return {
+        ...f,
+        media: f.media.map((m) =>
+          swapped.has(m.id) ? { ...m, order: swapped.get(m.id)! } : m,
+        ),
+      };
     });
   }
 
@@ -357,44 +380,67 @@ export function SessionForm({
       </label>
 
       <div className="mt-6">
-        <span className="mb-2 block text-sm font-medium text-[var(--color-ink-soft)]">
+        <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
           Media
         </span>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {sortedMedia.map((m, i) => (
-            <MediaEditorCard
-              key={m.id}
-              media={m}
-              isFirst={i === 0}
-              isLast={i === sortedMedia.length - 1}
-              onChange={(patch) => updateMedia(m.id, patch)}
-              onRemove={() => removeMedia(m.id)}
-              onMove={(dir) => moveMedia(m.id, dir)}
-            />
-          ))}
-          <button
-            type="button"
-            disabled={isUploading}
-            onClick={() => fileInputRef.current?.click()}
-            className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--color-border)] p-3 text-center text-[var(--color-ink-soft)] hover:border-[var(--color-sage)] hover:text-[var(--color-sage-dark)] disabled:opacity-50"
-          >
-            <UploadIcon className="h-6 w-6" />
-            <span className="text-xs leading-snug">
-              {isUploading ? (
-                compressPercent !== null ? (
-                  `Compressing… ${compressPercent}%`
-                ) : (
-                  "Uploading…"
-                )
-              ) : (
-                <>
-                  Upload video or image
-                  <br />
-                  MP4, MOV, JPG, PNG
-                </>
-              )}
-            </span>
-          </button>
+        <p className="mb-3 text-xs text-[var(--color-ink-soft)]">
+          Every clip or photo belongs to a set — upload it under the set it was
+          taken during.
+        </p>
+        <div className="flex flex-col gap-5">
+          {form.ratingSets.map((set) => {
+            const setMedia = sortedMedia.filter(
+              (m) => m.setNumber === set.setNumber,
+            );
+            const busy = isUploading && uploadingSet === set.setNumber;
+            return (
+              <div key={set.setNumber}>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
+                  Set {set.setNumber}
+                </p>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  {setMedia.map((m, i) => (
+                    <MediaEditorCard
+                      key={m.id}
+                      media={m}
+                      isFirst={i === 0}
+                      isLast={i === setMedia.length - 1}
+                      setCount={form.ratingSets.length}
+                      onChange={(patch) => updateMedia(m.id, patch)}
+                      onRemove={() => removeMedia(m.id)}
+                      onMove={(dir) => moveMedia(m.id, dir)}
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    onClick={() => {
+                      pendingSetRef.current = set.setNumber;
+                      fileInputRef.current?.click();
+                    }}
+                    className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--color-border)] p-3 text-center text-[var(--color-ink-soft)] hover:border-[var(--color-sage)] hover:text-[var(--color-sage-dark)] disabled:opacity-50"
+                  >
+                    <UploadIcon className="h-6 w-6" />
+                    <span className="text-xs leading-snug">
+                      {busy ? (
+                        compressPercent !== null ? (
+                          `Compressing… ${compressPercent}%`
+                        ) : (
+                          "Uploading…"
+                        )
+                      ) : (
+                        <>
+                          Add to set {set.setNumber}
+                          <br />
+                          MP4, MOV, JPG, PNG
+                        </>
+                      )}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
           <input
             ref={fileInputRef}
             type="file"
@@ -402,7 +448,7 @@ export function SessionForm({
             multiple
             className="hidden"
             onChange={(e) => {
-              handleFiles(e.target.files);
+              handleFiles(e.target.files, pendingSetRef.current);
               e.target.value = "";
             }}
           />

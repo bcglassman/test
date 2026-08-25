@@ -123,9 +123,9 @@ async function main() {
         effort: [6, 7, 8],
       }),
       media: [
-        { type: "video", file: sageImg.id, label: "Set 1", notes: "Good alignment early", duration: "0:12", order: 1 },
-        { type: "video", file: tanImg.id, label: "Set 2", notes: "More controlled descent", duration: "0:11", order: 2 },
-        { type: "image", file: slateImg.id, label: "Annotated frame", notes: "Left knee flaring", order: 3 },
+        { setNumber: 1, type: "video", file: sageImg.id, label: "Set 1", notes: "Good alignment early", duration: "0:12", order: 1 },
+        { setNumber: 2, type: "video", file: tanImg.id, label: "Set 2", notes: "More controlled descent", duration: "0:11", order: 2 },
+        { setNumber: 3, type: "image", file: slateImg.id, label: "Annotated frame", notes: "Left knee flaring", order: 3 },
       ],
     },
   });
@@ -146,9 +146,9 @@ async function main() {
         effort: [6, 7, 8],
       }),
       media: [
-        { type: "video", file: cav1.id, label: "Set 1", notes: "Smooth entry", duration: "0:13", order: 1 },
-        { type: "video", file: cav2.id, label: "Set 2", notes: "Improved rhythm", duration: "0:12", order: 2 },
-        { type: "video", file: cav3.id, label: "Set 3", notes: "Consistent foot placement", duration: "0:12", order: 3 },
+        { setNumber: 1, type: "video", file: cav1.id, label: "Set 1", notes: "Smooth entry", duration: "0:13", order: 1 },
+        { setNumber: 2, type: "video", file: cav2.id, label: "Set 2", notes: "Improved rhythm", duration: "0:12", order: 2 },
+        { setNumber: 3, type: "video", file: cav3.id, label: "Set 3", notes: "Consistent foot placement", duration: "0:12", order: 3 },
       ],
     },
   });
@@ -167,9 +167,9 @@ async function main() {
         effort: [8],
       }),
       media: [
-        { type: "video", file: tmWarm.id, label: "Warm up", duration: "0:10", order: 1 },
-        { type: "video", file: tmWork.id, label: "Working set", duration: "0:15", order: 2 },
-        { type: "video", file: tmCool.id, label: "Cool down", duration: "0:10", order: 3 },
+        { setNumber: 1, type: "video", file: tmWarm.id, label: "Warm up", duration: "0:10", order: 1 },
+        { setNumber: 1, type: "video", file: tmWork.id, label: "Working set", duration: "0:15", order: 2 },
+        { setNumber: 1, type: "video", file: tmCool.id, label: "Cool down", duration: "0:10", order: 3 },
       ],
     },
   });

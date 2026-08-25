@@ -102,12 +102,23 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
         )}
       </div>
 
-      <div className="grid flex-1 grid-cols-2 gap-4 sm:grid-cols-3">
-        {session.media
-          .slice()
-          .sort((a, b) => a.order - b.order)
-          .map((m) => (
-            <MediaThumb key={m.id} media={m} />
+      <div className="flex flex-1 flex-col gap-5">
+        {Array.from(new Set(session.media.map((m) => m.setNumber)))
+          .sort((a, b) => a - b)
+          .map((setNumber) => (
+            <div key={setNumber}>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
+                Set {setNumber}
+              </p>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {session.media
+                  .filter((m) => m.setNumber === setNumber)
+                  .sort((a, b) => a.order - b.order)
+                  .map((m) => (
+                    <MediaThumb key={m.id} media={m} />
+                  ))}
+              </div>
+            </div>
           ))}
       </div>
     </article>

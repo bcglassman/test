@@ -37,8 +37,9 @@ seeding if any exercise already exists.
 - **`/sessions` — Sessions.** Requires login. List of all sessions plus a
   form to add or edit one: exercise, date/time, one row of rating sliders
   per set performed (adding/removing a set updates the rows to match), a
-  live session-average readout, sets/reps/rest, notes, and media items
-  (upload, caption, reorder, remove). Logged out, this screen shows a gate
+  live session-average readout, sets/reps/rest, notes, and media grouped by
+  set — each set has its own upload button, and every clip/photo can be
+  re-assigned to a different set. Logged out, this screen shows a gate
   linking to `/admin/login` instead.
 - **`/exercises` — Exercises.** Requires login. Read-only list of every
   exercise with its category, focus, and rating dimensions.
@@ -72,8 +73,9 @@ are in `src/collections/`:
   over half. It's done client-side because this deploys to a small droplet
   where server-side transcoding would be slow and memory-hungry; every
   failure path falls back to uploading the original untouched. A session's `media` array field
-  references Media docs plus per-item label/notes/order — so sets, videos,
-  and photos are all just media items, no separate concept for each.
+  references Media docs plus per-item `setNumber`/label/notes/order, so every
+  clip or photo belongs to a specific set of the session and the feed can
+  group them under it.
 - **Ratings are stored per set**: a session's `ratingSets` array has one
   entry per set performed, each holding `{ key, score }` pairs (see
   `src/lib/types.ts`'s `RatingSetEntry`). A dimension's label, max, and

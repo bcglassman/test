@@ -57,9 +57,17 @@ export const Sessions: CollectionConfig = {
       name: "media",
       type: "array",
       admin: {
-        description: "Videos/photos belonging to this session, in order.",
+        description:
+          "Videos/photos belonging to this session, in order. Each one belongs to a specific set.",
       },
       fields: [
+        {
+          name: "setNumber",
+          type: "number",
+          required: true,
+          defaultValue: 1,
+          admin: { description: "Which set this clip/photo was taken during." },
+        },
         {
           name: "type",
           type: "select",
