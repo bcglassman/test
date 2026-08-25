@@ -9,13 +9,13 @@ export function Header({ active }: { active: "feed" | "sessions" }) {
 
   return (
     <header className="border-b border-[var(--color-border)] bg-[var(--color-cream)]">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-3 px-4 py-4 sm:px-6 sm:py-5">
         <Link href="/" className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-sage)] text-white">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-sage)] text-white sm:h-11 sm:w-11">
             <PawIcon className="h-5 w-5" />
           </span>
           <span>
-            <span className="block font-serif text-2xl leading-tight text-[var(--color-ink)]">
+            <span className="block font-serif text-xl leading-tight text-[var(--color-ink)] sm:text-2xl">
               Cookie Training
             </span>
             <span className="block text-sm text-[var(--color-ink-soft)]">
@@ -24,11 +24,11 @@ export function Header({ active }: { active: "feed" | "sessions" }) {
           </span>
         </Link>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-3 sm:gap-5">
           <button
             type="button"
             title="A simple exercise journal for tracking Cookie's rehab and training progress."
-            className="flex items-center gap-1.5 text-sm text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+            className="hidden items-center gap-1.5 text-sm text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:flex"
           >
             <InfoIcon className="h-4 w-4" />
             About
