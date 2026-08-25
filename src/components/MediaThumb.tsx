@@ -185,14 +185,32 @@ function VideoPlayer({ media }: { media: MediaItem }) {
   );
 }
 
+/** "12 Aug, 3:40 PM" — when the clip was actually shot, if known. */
+function CapturedAt({ iso }: { iso?: string }) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return (
+    <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+      {date.toLocaleString(undefined, {
+        day: "2-digit",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit",
+      })}
+    </p>
+  );
+}
+
 export function MediaThumb({ media }: { media: MediaItem }) {
   if (media.url && media.type === "video") {
     return (
       <figure className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
         <VideoPlayer media={media} />
-        {media.notes && (
+        {(media.notes || media.capturedAt) && (
           <figcaption className="px-3 py-2.5 text-sm text-[var(--color-ink-soft)]">
             {media.notes}
+            <CapturedAt iso={media.capturedAt} />
           </figcaption>
         )}
       </figure>
@@ -224,9 +242,10 @@ export function MediaThumb({ media }: { media: MediaItem }) {
         )}
         {!media.url && <PawIcon className="h-10 w-10 text-white/70" />}
       </div>
-      {media.notes && (
+      {(media.notes || media.capturedAt) && (
         <figcaption className="px-3 py-2.5 text-sm text-[var(--color-ink-soft)]">
           {media.notes}
+          <CapturedAt iso={media.capturedAt} />
         </figcaption>
       )}
     </figure>

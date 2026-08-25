@@ -95,6 +95,14 @@ export function PauseIcon(props: IconProps) {
   );
 }
 
+export function DriveIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M9 3h6l6 10.5h-6zM9 3 3 13.5 6 19l6-10.5zM6 19h12l3-5.5H9z" />
+    </svg>
+  );
+}
+
 export function VolumeOnIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

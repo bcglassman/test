@@ -52,6 +52,14 @@ export const Sessions: CollectionConfig = {
     { name: "reps", type: "number" },
     { name: "passes", type: "number" },
     { name: "restLabel", type: "text" },
+    {
+      name: "environment",
+      type: "text",
+      admin: {
+        description:
+          'Where and under what conditions, e.g. "Outside — warm" or "Air-conditioned gym".',
+      },
+    },
     { name: "notes", type: "textarea" },
     {
       name: "media",
@@ -83,6 +91,15 @@ export const Sessions: CollectionConfig = {
         { name: "label", type: "text" },
         { name: "notes", type: "text" },
         { name: "duration", type: "text" },
+        {
+          name: "capturedAt",
+          type: "date",
+          admin: {
+            date: { pickerAppearance: "dayAndTime" },
+            description:
+              "When the clip/photo was recorded, read from the file's own metadata on upload.",
+          },
+        },
         { name: "order", type: "number", required: true, defaultValue: 0 },
       ],
     },

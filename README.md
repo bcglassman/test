@@ -37,10 +37,13 @@ seeding if any exercise already exists.
 - **`/sessions` — Sessions.** Requires login. List of all sessions plus a
   form to add or edit one: exercise, date/time, one row of rating sliders
   per set performed (adding/removing a set updates the rows to match), a
-  live session-average readout, sets/reps/rest, notes, and media grouped by
-  set — each set has its own upload button, and every clip/photo can be
-  re-assigned to a different set. Logged out, this screen shows a gate
-  linking to `/admin/login` instead.
+  live session-average readout, sets/reps/rest, environment (e.g. "Outside —
+  warm", "Air-conditioned gym"), notes, and media grouped by set — each set
+  has its own upload button, and every clip/photo can be re-assigned to a
+  different set. Media can come from the local file picker or, when Google
+  credentials are configured (see `.env.example`), straight from Google
+  Drive. Logged out, this screen shows a gate linking to `/admin/login`
+  instead.
 - **`/exercises` — Exercises.** Requires login. Read-only list of every
   exercise with its category, focus, and rating dimensions.
 - **`/exercises/new` — Add Exercise.** Requires login. Type just the
@@ -72,7 +75,18 @@ are in `src/collections/`:
   1280px and capped at ~2 Mbps, which cuts typical phone footage by well
   over half. It's done client-side because this deploys to a small droplet
   where server-side transcoding would be slow and memory-hungry; every
-  failure path falls back to uploading the original untouched. A session's `media` array field
+  failure path falls back to uploading the original untouched. Each media
+  row also records a `capturedAt` — when the clip was actually shot, read
+  from the file's own metadata (`lastModified` locally; EXIF time or
+  `createdTime` for Drive imports) rather than when it was added.
+- **Google Drive import** (`src/lib/google-drive.ts`) — optional. Uses the
+  Google Picker with the `drive.file` scope, so the app only ever sees the
+  files you explicitly pick, and that scope isn't "restricted" so it needs
+  no app verification. The browser fetches the bytes from the Drive API
+  (which serves CORS requests with an auth header, unlike
+  `drive.google.com` share links) and feeds them through the same
+  compress-then-upload path as a local file — the server never downloads
+  anything. Unconfigured, the button simply doesn't render. A session's `media` array field
   references Media docs plus per-item `setNumber`/label/notes/order, so every
   clip or photo belongs to a specific set of the session and the feed can
   group them under it.

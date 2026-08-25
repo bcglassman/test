@@ -18,6 +18,12 @@ export interface MediaItem {
   notes?: string;
   /** Display duration for videos, e.g. "0:12". */
   duration?: string;
+  /**
+   * When the clip/photo was actually recorded, as an ISO 8601 timestamp —
+   * taken from the file's own metadata on upload, not the time it was
+   * added. Absent when the source didn't report one.
+   */
+  capturedAt?: string;
   order: number;
   /**
    * The CMS's own id for the uploaded asset (e.g. Payload's `media`
@@ -85,6 +91,8 @@ export interface TrainingSession {
   passes?: number;
   restLabel?: string;
   notes?: string;
+  /** Where/under what conditions, e.g. "Outside — warm" or "Air-conditioned gym". */
+  environment?: string;
   media: MediaItem[];
 }
 

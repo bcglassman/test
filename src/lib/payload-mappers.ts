@@ -75,6 +75,7 @@ function mapMediaItem(
     label: item.label ?? "",
     notes: item.notes ?? undefined,
     duration: item.duration ?? undefined,
+    capturedAt: item.capturedAt ?? undefined,
     order: item.order ?? index,
   };
 }
@@ -101,6 +102,7 @@ export function mapSession(doc: PayloadSession): TrainingSession {
     passes: doc.passes ?? undefined,
     restLabel: doc.restLabel ?? undefined,
     notes: doc.notes ?? undefined,
+    environment: doc.environment ?? undefined,
     media: (doc.media ?? []).map(mapMediaItem),
   };
 }
@@ -119,6 +121,7 @@ export function sessionToPayloadBody(session: TrainingSession) {
     passes: session.passes ?? null,
     restLabel: session.restLabel ?? null,
     notes: session.notes ?? null,
+    environment: session.environment ?? null,
     media: session.media
       .filter((m) => m.fileId)
       .map((m) => ({
@@ -128,6 +131,7 @@ export function sessionToPayloadBody(session: TrainingSession) {
         label: m.label,
         notes: m.notes ?? null,
         duration: m.duration ?? null,
+        capturedAt: m.capturedAt ?? null,
         order: m.order,
       })),
   };

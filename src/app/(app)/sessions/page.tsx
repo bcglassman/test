@@ -31,6 +31,7 @@ export default function SessionsAdminPage() {
           passes: selected.passes,
           restLabel: selected.restLabel,
           notes: selected.notes,
+          environment: selected.environment,
           media: selected.media,
         }
       : null;

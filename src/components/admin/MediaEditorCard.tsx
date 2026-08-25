@@ -89,6 +89,18 @@ export function MediaEditorCard({
         placeholder="Note for this clip"
         className="mb-2 w-full rounded-md border border-[var(--color-border)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-sage)]"
       />
+      {media.capturedAt && !Number.isNaN(new Date(media.capturedAt).getTime()) && (
+        <p className="mb-2 text-xs text-[var(--color-ink-soft)]">
+          Recorded{" "}
+          {new Date(media.capturedAt).toLocaleString(undefined, {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          })}
+        </p>
+      )}
       <label className="mb-2 flex items-center gap-1.5 text-xs text-[var(--color-ink-soft)]">
         Set
         <select

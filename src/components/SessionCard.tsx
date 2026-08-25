@@ -90,6 +90,17 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
           </div>
         )}
 
+        {session.environment && (
+          <div className="mt-4 border-t border-[var(--color-border)] pt-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-soft)]">
+              Environment
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-[var(--color-ink)]">
+              {session.environment}
+            </p>
+          </div>
+        )}
+
         {session.notes && (
           <div className="mt-4 border-t border-[var(--color-border)] pt-4">
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-soft)]">

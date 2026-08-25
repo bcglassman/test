@@ -3,10 +3,16 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import type { Exercise, MediaItem, RatingSetEntry, TrainingSession } from "@/lib/types";
-import { CategoryIcon, UploadIcon } from "@/components/icons";
+import { CategoryIcon, DriveIcon, UploadIcon } from "@/components/icons";
 import { MediaEditorCard } from "./MediaEditorCard";
 import { mediaFromFile } from "@/lib/media-utils";
 import { aggregateRatings } from "@/lib/session-utils";
+import {
+  downloadDriveFile,
+  fetchCapturedAt,
+  isGoogleDriveConfigured,
+  pickDriveFiles,
+} from "@/lib/google-drive";
 
 const REST_PRESETS = ["None", "~30 sec", "~45 sec", "~60 sec", "~90 sec", "~2 min", "~5 min", "~10 min"];
 
@@ -80,6 +86,8 @@ export function SessionForm({
   const [isUploading, setIsUploading] = useState(false);
   const [compressPercent, setCompressPercent] = useState<number | null>(null);
   const [uploadingSet, setUploadingSet] = useState<number | null>(null);
+  const [driveStatus, setDriveStatus] = useState<string | null>(null);
+  const driveEnabled = isGoogleDriveConfigured();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -123,18 +131,26 @@ export function SessionForm({
     }));
   }
 
-  async function handleFiles(files: FileList | null, setNumber: number) {
-    if (!files || files.length === 0) return;
+  async function addFilesToSet(
+    files: File[],
+    setNumber: number,
+    capturedAtByIndex?: (string | undefined)[],
+  ) {
+    if (files.length === 0) return;
     setError(null);
     setIsUploading(true);
     setUploadingSet(setNumber);
     try {
       const nextOrder = form.media.length + 1;
       const added: MediaItem[] = [];
-      for (const [i, file] of Array.from(files).entries()) {
+      for (const [i, file] of files.entries()) {
         added.push(
-          await mediaFromFile(file, nextOrder + i, setNumber, (fraction) =>
-            setCompressPercent(Math.round(fraction * 100)),
+          await mediaFromFile(
+            file,
+            nextOrder + i,
+            setNumber,
+            (fraction) => setCompressPercent(Math.round(fraction * 100)),
+            capturedAtByIndex?.[i],
           ),
         );
         setCompressPercent(null);
@@ -146,6 +162,47 @@ export function SessionForm({
       setIsUploading(false);
       setUploadingSet(null);
       setCompressPercent(null);
+    }
+  }
+
+  function handleFiles(files: FileList | null, setNumber: number) {
+    if (!files || files.length === 0) return;
+    addFilesToSet(Array.from(files), setNumber);
+  }
+
+  /**
+   * Pulls the picked Drive files into the browser, then runs them through the
+   * same compress-and-upload path as a local file.
+   */
+  async function handleDriveImport(setNumber: number) {
+    if (isUploading) return;
+    setError(null);
+    try {
+      const picked = await pickDriveFiles();
+      if (picked.length === 0) return;
+
+      setIsUploading(true);
+      setUploadingSet(setNumber);
+      setDriveStatus(`Fetching from Drive… (1/${picked.length})`);
+      const files: File[] = [];
+      const capturedAt: (string | undefined)[] = [];
+      for (const [i, file] of picked.entries()) {
+        setDriveStatus(`Fetching from Drive… (${i + 1}/${picked.length})`);
+        capturedAt.push(await fetchCapturedAt(file.id));
+        files.push(await downloadDriveFile(file));
+      }
+      setDriveStatus(null);
+      // addFilesToSet manages the uploading flags from here.
+      setIsUploading(false);
+      setUploadingSet(null);
+      await addFilesToSet(files, setNumber, capturedAt);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Couldn't import from Google Drive.",
+      );
+      setIsUploading(false);
+      setUploadingSet(null);
+      setDriveStatus(null);
     }
   }
 
@@ -369,6 +426,20 @@ export function SessionForm({
 
       <label className="mt-6 block">
         <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+          Environment
+        </span>
+        <input
+          value={form.environment ?? ""}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, environment: e.target.value }))
+          }
+          placeholder="e.g. Outside — warm, or Air-conditioned gym"
+          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
+        />
+      </label>
+
+      <label className="mt-6 block">
+        <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
           Session notes
         </span>
         <textarea
@@ -423,10 +494,10 @@ export function SessionForm({
                     <UploadIcon className="h-6 w-6" />
                     <span className="text-xs leading-snug">
                       {busy ? (
-                        compressPercent !== null ? (
-                          `Compressing… ${compressPercent}%`
-                        ) : (
-                          "Uploading…"
+                        driveStatus ?? (
+                          compressPercent !== null
+                            ? `Compressing… ${compressPercent}%`
+                            : "Uploading…"
                         )
                       ) : (
                         <>
@@ -438,6 +509,17 @@ export function SessionForm({
                     </span>
                   </button>
                 </div>
+                {driveEnabled && (
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    onClick={() => handleDriveImport(set.setNumber)}
+                    className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[var(--color-sage-dark)] hover:underline disabled:opacity-50"
+                  >
+                    <DriveIcon className="h-3.5 w-3.5" />
+                    Import from Google Drive
+                  </button>
+                )}
               </div>
             );
           })}

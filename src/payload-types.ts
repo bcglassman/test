@@ -205,6 +205,10 @@ export interface Session {
   reps?: number | null;
   passes?: number | null;
   restLabel?: string | null;
+  /**
+   * Where and under what conditions, e.g. "Outside — warm" or "Air-conditioned gym".
+   */
+  environment?: string | null;
   notes?: string | null;
   /**
    * Videos/photos belonging to this session, in order. Each one belongs to a specific set.
@@ -220,6 +224,10 @@ export interface Session {
         label?: string | null;
         notes?: string | null;
         duration?: string | null;
+        /**
+         * When the clip/photo was recorded, read from the file's own metadata on upload.
+         */
+        capturedAt?: string | null;
         order: number;
         id?: string | null;
       }[]
@@ -395,6 +403,7 @@ export interface SessionsSelect<T extends boolean = true> {
   reps?: T;
   passes?: T;
   restLabel?: T;
+  environment?: T;
   notes?: T;
   media?:
     | T
@@ -405,6 +414,7 @@ export interface SessionsSelect<T extends boolean = true> {
         label?: T;
         notes?: T;
         duration?: T;
+        capturedAt?: T;
         order?: T;
         id?: T;
       };

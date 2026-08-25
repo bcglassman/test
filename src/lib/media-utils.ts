@@ -28,8 +28,13 @@ export async function mediaFromFile(
   order: number,
   setNumber: number,
   onCompressProgress?: (fraction: number) => void,
+  /** Overrides the capture time, for sources that report a better one than the file itself (e.g. Drive). */
+  capturedAt?: string,
 ): Promise<MediaItem> {
   const type: MediaType = file.type.startsWith("video") ? "video" : "image";
+  // Read this before compressing — re-encoding produces a brand-new File
+  // whose lastModified is "now", which would lose the original capture time.
+  const captured = capturedAt ?? capturedAtFromFile(file);
   const upload =
     type === "video" ? await compressVideo(file, {}, onCompressProgress) : file;
   const { doc } = await payloadUpload<{ doc: PayloadMedia }>("media", upload, {
@@ -43,6 +48,22 @@ export async function mediaFromFile(
     fileId: String(doc.id),
     label: `Set ${setNumber}`,
     notes: "",
+    capturedAt: captured,
     order,
   };
+}
+
+/**
+ * Best available capture time for a locally-picked file. Browsers don't
+ * expose EXIF, so `lastModified` is what there is — accurate for files
+ * straight off a camera or phone, less so for ones that have been copied
+ * around. Undefined rather than a guess when it looks unusable.
+ */
+function capturedAtFromFile(file: File): string | undefined {
+  if (!file.lastModified) return undefined;
+  const date = new Date(file.lastModified);
+  if (Number.isNaN(date.getTime()) || date.getTime() <= 0) return undefined;
+  // Guard against clock-skewed files dated in the future.
+  if (date.getTime() > Date.now() + 24 * 60 * 60 * 1000) return undefined;
+  return date.toISOString();
 }

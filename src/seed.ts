@@ -114,6 +114,7 @@ async function main() {
       sets: 3,
       reps: 6,
       restLabel: "~60 sec",
+      environment: "Air-conditioned gym",
       notes:
         "Better control today. Left knee begins moving outward near fatigue.",
       ratingSets: ratingSets({
@@ -138,6 +139,7 @@ async function main() {
       sets: 3,
       passes: 5,
       restLabel: "~45 sec",
+      environment: "Outside — cool, overcast",
       notes: "Steady, deliberate steps. Good hip engagement on the left.",
       ratingSets: ratingSets({
         form: [7, 8, 9],
@@ -159,6 +161,7 @@ async function main() {
       exercise: treadmill.id,
       date: "2026-08-22T09:15:00.000Z",
       restLabel: "~10 min",
+      environment: "Indoor treadmill room",
       notes: "Warm-up to working pace and back down without soreness after.",
       ratingSets: ratingSets({
         form: [7],
@@ -182,6 +185,7 @@ async function main() {
       sets: 3,
       reps: 5,
       restLabel: "~60 sec",
+      environment: "Air-conditioned gym",
       notes: "First session back after rest. Cautious but willing.",
       ratingSets: ratingSets({
         form: [4, 5, 6],
