@@ -1,13 +1,34 @@
 import type {
   Exercise,
+  RatingDimension,
   SessionWithExercise,
   TrainingSession,
 } from "./types";
 
-export function overallScore(session: TrainingSession): number {
-  if (session.ratings.length === 0) return 0;
-  const sum = session.ratings.reduce((acc, r) => acc + r.score, 0);
-  return Math.round(sum / session.ratings.length);
+/**
+ * Per-dimension scores for a session, averaged across its rating sets and
+ * joined with the exercise's current label/max/scale — so ratings always
+ * reflect what the exercise defines today, not a stale per-session copy.
+ */
+export function aggregateRatings(
+  session: TrainingSession,
+  exercise: Exercise,
+): RatingDimension[] {
+  return exercise.defaultRatings.map((def) => {
+    const scores = session.ratingSets
+      .map((set) => set.ratings.find((r) => r.key === def.key)?.score)
+      .filter((s): s is number => typeof s === "number");
+    const score = scores.length
+      ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+      : Math.round(def.max / 2);
+    return { ...def, score };
+  });
+}
+
+export function overallScore(ratings: RatingDimension[]): number {
+  if (ratings.length === 0) return 0;
+  const sum = ratings.reduce((acc, r) => acc + r.score, 0);
+  return Math.round(sum / ratings.length);
 }
 
 /**
@@ -36,14 +57,18 @@ export function withExerciseAndTrend(
   for (const session of sessions) {
     const exercise = exerciseById.get(session.exerciseId);
     if (!exercise) continue;
+    const ratings = aggregateRatings(session, exercise);
     const history = byExercise.get(session.exerciseId) ?? [];
     const idx = history.findIndex((s) => s.id === session.id);
     const previous = idx > 0 ? history[idx - 1] : undefined;
     result.push({
       ...session,
       exercise,
-      overall: overallScore(session),
-      previousOverall: previous ? overallScore(previous) : undefined,
+      ratings,
+      overall: overallScore(ratings),
+      previousOverall: previous
+        ? overallScore(aggregateRatings(previous, exercise))
+        : undefined,
     });
   }
 

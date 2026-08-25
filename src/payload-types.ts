@@ -185,12 +185,19 @@ export interface Session {
   id: number;
   exercise: number | Exercise;
   date: string;
-  ratings?:
+  /**
+   * One entry per set performed. Labels/max/scale come from the exercise's own rating dimensions, not stored here.
+   */
+  ratingSets?:
     | {
-        key: string;
-        label: string;
-        score: number;
-        max: number;
+        setNumber: number;
+        ratings?:
+          | {
+              key: string;
+              score: number;
+              id?: string | null;
+            }[]
+          | null;
         id?: string | null;
       }[]
     | null;
@@ -367,13 +374,17 @@ export interface ExercisesSelect<T extends boolean = true> {
 export interface SessionsSelect<T extends boolean = true> {
   exercise?: T;
   date?: T;
-  ratings?:
+  ratingSets?:
     | T
     | {
-        key?: T;
-        label?: T;
-        score?: T;
-        max?: T;
+        setNumber?: T;
+        ratings?:
+          | T
+          | {
+              key?: T;
+              score?: T;
+              id?: T;
+            };
         id?: T;
       };
   sets?: T;

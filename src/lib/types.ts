@@ -59,12 +59,24 @@ export interface Exercise {
   defaultRatings: Omit<RatingDimension, "score">[];
 }
 
+export interface RatingScore {
+  key: string;
+  score: number;
+}
+
+/** One performed set's scores, keyed to the exercise's rating dimensions. */
+export interface RatingSetEntry {
+  setNumber: number;
+  ratings: RatingScore[];
+}
+
 export interface TrainingSession {
   id: string;
   exerciseId: string;
   /** ISO 8601 timestamp. */
   date: string;
-  ratings: RatingDimension[];
+  /** Per-set scores. Session-level scores are the average across these — see aggregateRatings(). */
+  ratingSets: RatingSetEntry[];
   sets?: number;
   reps?: number;
   /** Some exercises log "passes" instead of reps (e.g. cavaletti). */
@@ -76,6 +88,8 @@ export interface TrainingSession {
 
 export interface SessionWithExercise extends TrainingSession {
   exercise: Exercise;
+  /** Per-dimension scores averaged across ratingSets, joined with the exercise's label/max/scale — see aggregateRatings(). */
+  ratings: RatingDimension[];
   overall: number;
   previousOverall?: number;
 }

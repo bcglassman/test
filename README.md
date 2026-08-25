@@ -33,10 +33,13 @@ seeding if any exercise already exists.
   trend vs. the previous session for that same exercise, and its media
   (video/photo) items.
 - **`/sessions` — Sessions.** Requires login. List of all sessions plus a
-  form to add or edit one: exercise, date/time, flexible ratings,
-  sets/reps/rest, notes, and media items (upload, caption, reorder,
-  remove). Logged out, this screen shows a gate linking to `/admin/login`
-  instead.
+  form to add or edit one: exercise, date/time, one row of rating sliders
+  per set performed (adding/removing a set updates the rows to match), a
+  live session-average readout, sets/reps/rest, notes, and media items
+  (upload, caption, reorder, remove). Logged out, this screen shows a gate
+  linking to `/admin/login` instead.
+- **`/exercises` — Exercises.** Requires login. Read-only list of every
+  exercise with its category, focus, and rating dimensions.
 - **`/exercises/new` — Add Exercise.** Requires login. Type just the
   exercise's name, then click the sparkle button to have Claude pre-fill
   category, focus, description, and rating dimensions — all still editable
@@ -46,7 +49,7 @@ seeding if any exercise already exists.
   (`src/lib/rating-library.ts`) for consistent wording across exercises, or
   typed by hand and given a 1–5 descriptive scale via its own sparkle
   button. Capped at 5 dimensions per exercise so the feed's ratings row
-  stays readable.
+  stays readable. Saving returns you to `/exercises`.
 - **`/admin` — Payload's admin panel.** The full CMS: edit/delete any
   Exercise, Session, or Media doc directly, manage users.
 
@@ -58,15 +61,21 @@ are in `src/collections/`:
 - **Exercise** (`src/collections/Exercises.ts`) — the reusable exercise
   definition (name, category, focus, default rating dimensions).
 - **Session** (`src/collections/Sessions.ts`) — one instance of performing
-  an exercise: a relationship to its exercise, ratings, sets/reps/rest,
+  an exercise: a relationship to its exercise, per-set ratings, sets/reps/rest,
   notes, and an array of media items.
 - **Media** (`src/collections/Media.ts`) — Payload's built-in upload
   collection; video/image files live here. A session's `media` array field
   references Media docs plus per-item label/notes/order — so sets, videos,
   and photos are all just media items, no separate concept for each.
-- **Ratings** are a flexible array of `{ key, label, score, max }` on the
-  session, not fixed columns, so different exercises could use different
-  rating dimensions without a schema change.
+- **Ratings are stored per set**: a session's `ratingSets` array has one
+  entry per set performed, each holding `{ key, score }` pairs (see
+  `src/lib/types.ts`'s `RatingSetEntry`). A dimension's label, max, and
+  optional 1–5 scale live only on the Exercise
+  (`defaultRatings`) — never copied onto the session — so ratings always
+  reflect the exercise's current definition. `aggregateRatings()` in
+  `src/lib/session-utils.ts` averages each dimension across a session's
+  sets and joins in that label/max/scale; this is what the feed and the
+  session-level "Overall" score use.
 - **Users** (`src/collections/Users.ts`) — Payload's auth collection,
   used for `/admin` and for gating writes from `/sessions`.
 

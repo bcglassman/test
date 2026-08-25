@@ -13,6 +13,16 @@ const ratingDims = [
   { key: "effort", label: "Effort", max: 10 },
 ];
 
+/** Builds one ratingSets entry per column of per-set scores, e.g. { form: [5, 6, 7] } -> 3 sets. */
+function ratingSets(perDimensionScores: Record<string, number[]>) {
+  const keys = Object.keys(perDimensionScores);
+  const count = Math.max(...keys.map((k) => perDimensionScores[k].length));
+  return Array.from({ length: count }, (_, i) => ({
+    setNumber: i + 1,
+    ratings: keys.map((key) => ({ key, score: perDimensionScores[key][i] })),
+  }));
+}
+
 async function main() {
   const payload = await getPayload({ config });
 
@@ -106,12 +116,12 @@ async function main() {
       restLabel: "~60 sec",
       notes:
         "Better control today. Left knee begins moving outward near fatigue.",
-      ratings: [
-        { key: "form", label: "Form", score: 6, max: 10 },
-        { key: "control", label: "Control", score: 8, max: 10 },
-        { key: "symmetry", label: "Symmetry", score: 6, max: 10 },
-        { key: "effort", label: "Effort", score: 7, max: 10 },
-      ],
+      ratingSets: ratingSets({
+        form: [5, 6, 7],
+        control: [7, 8, 9],
+        symmetry: [5, 6, 7],
+        effort: [6, 7, 8],
+      }),
       media: [
         { type: "video", file: sageImg.id, label: "Set 1", notes: "Good alignment early", duration: "0:12", order: 1 },
         { type: "video", file: tanImg.id, label: "Set 2", notes: "More controlled descent", duration: "0:11", order: 2 },
@@ -129,12 +139,12 @@ async function main() {
       passes: 5,
       restLabel: "~45 sec",
       notes: "Steady, deliberate steps. Good hip engagement on the left.",
-      ratings: [
-        { key: "form", label: "Form", score: 8, max: 10 },
-        { key: "control", label: "Control", score: 8, max: 10 },
-        { key: "symmetry", label: "Symmetry", score: 9, max: 10 },
-        { key: "effort", label: "Effort", score: 7, max: 10 },
-      ],
+      ratingSets: ratingSets({
+        form: [7, 8, 9],
+        control: [7, 8, 9],
+        symmetry: [8, 9, 10],
+        effort: [6, 7, 8],
+      }),
       media: [
         { type: "video", file: cav1.id, label: "Set 1", notes: "Smooth entry", duration: "0:13", order: 1 },
         { type: "video", file: cav2.id, label: "Set 2", notes: "Improved rhythm", duration: "0:12", order: 2 },
@@ -150,12 +160,12 @@ async function main() {
       date: "2026-08-22T09:15:00.000Z",
       restLabel: "~10 min",
       notes: "Warm-up to working pace and back down without soreness after.",
-      ratings: [
-        { key: "form", label: "Form", score: 7, max: 10 },
-        { key: "control", label: "Control", score: 7, max: 10 },
-        { key: "symmetry", label: "Symmetry", score: 7, max: 10 },
-        { key: "effort", label: "Effort", score: 8, max: 10 },
-      ],
+      ratingSets: ratingSets({
+        form: [7],
+        control: [7],
+        symmetry: [7],
+        effort: [8],
+      }),
       media: [
         { type: "video", file: tmWarm.id, label: "Warm up", duration: "0:10", order: 1 },
         { type: "video", file: tmWork.id, label: "Working set", duration: "0:15", order: 2 },
@@ -173,12 +183,12 @@ async function main() {
       reps: 5,
       restLabel: "~60 sec",
       notes: "First session back after rest. Cautious but willing.",
-      ratings: [
-        { key: "form", label: "Form", score: 5, max: 10 },
-        { key: "control", label: "Control", score: 6, max: 10 },
-        { key: "symmetry", label: "Symmetry", score: 5, max: 10 },
-        { key: "effort", label: "Effort", score: 6, max: 10 },
-      ],
+      ratingSets: ratingSets({
+        form: [4, 5, 6],
+        control: [5, 6, 7],
+        symmetry: [4, 5, 6],
+        effort: [5, 6, 7],
+      }),
       media: [],
     },
   });

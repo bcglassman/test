@@ -30,13 +30,22 @@ export const Sessions: CollectionConfig = {
       },
     },
     {
-      name: "ratings",
+      name: "ratingSets",
       type: "array",
+      admin: {
+        description:
+          "One entry per set performed. Labels/max/scale come from the exercise's own rating dimensions, not stored here.",
+      },
       fields: [
-        { name: "key", type: "text", required: true },
-        { name: "label", type: "text", required: true },
-        { name: "score", type: "number", required: true },
-        { name: "max", type: "number", required: true, defaultValue: 10 },
+        { name: "setNumber", type: "number", required: true },
+        {
+          name: "ratings",
+          type: "array",
+          fields: [
+            { name: "key", type: "text", required: true },
+            { name: "score", type: "number", required: true },
+          ],
+        },
       ],
     },
     { name: "sets", type: "number" },

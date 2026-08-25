@@ -47,9 +47,9 @@ export default function NewExercisePage() {
         <ExerciseForm
           onCreated={async () => {
             await refresh();
-            router.push("/sessions");
+            router.push("/exercises");
           }}
-          onCancel={() => router.push("/sessions")}
+          onCancel={() => router.push("/exercises")}
         />
       </main>
     </div>

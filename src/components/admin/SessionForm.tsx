@@ -2,10 +2,11 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import type { Exercise, MediaItem, RatingDimension, TrainingSession } from "@/lib/types";
+import type { Exercise, MediaItem, RatingSetEntry, TrainingSession } from "@/lib/types";
 import { CategoryIcon, UploadIcon } from "@/components/icons";
 import { MediaEditorCard } from "./MediaEditorCard";
 import { mediaFromFile } from "@/lib/media-utils";
+import { aggregateRatings } from "@/lib/session-utils";
 
 const REST_PRESETS = ["None", "~30 sec", "~45 sec", "~60 sec", "~90 sec", "~2 min", "~5 min", "~10 min"];
 
@@ -17,6 +18,28 @@ function toDateTimeLocal(iso: string) {
   )}:${pad(d.getMinutes())}`;
 }
 
+/**
+ * Builds `count` rating-set rows for `exercise`, carrying over scores from
+ * `existing` by set index + dimension key where possible, so switching the
+ * exercise or the set count doesn't throw away scores that still apply.
+ */
+function ratingSetsForExercise(
+  exercise: Exercise,
+  existing: RatingSetEntry[],
+  count: number,
+): RatingSetEntry[] {
+  return Array.from({ length: Math.max(count, 0) }, (_, i) => {
+    const prior = existing[i];
+    return {
+      setNumber: i + 1,
+      ratings: exercise.defaultRatings.map((def) => {
+        const priorScore = prior?.ratings.find((r) => r.key === def.key)?.score;
+        return { key: def.key, score: priorScore ?? Math.round(def.max / 2) };
+      }),
+    };
+  });
+}
+
 function blankFromExercise(exercise: Exercise): TrainingSession {
   return {
     // Empty id marks a session that hasn't been created in the CMS yet;
@@ -24,7 +47,7 @@ function blankFromExercise(exercise: Exercise): TrainingSession {
     id: "",
     exerciseId: exercise.id,
     date: toDateTimeLocal(new Date().toISOString()),
-    ratings: exercise.defaultRatings.map((r) => ({ ...r, score: Math.round(r.max / 2) })),
+    ratingSets: ratingSetsForExercise(exercise, [], 3),
     sets: 3,
     reps: 6,
     restLabel: "~60 sec",
@@ -44,11 +67,16 @@ export function SessionForm({
   onSave: (session: TrainingSession) => Promise<void>;
   onCancel: () => void;
 }) {
-  const [form, setForm] = useState<TrainingSession>(() =>
-    session
-      ? { ...session, date: toDateTimeLocal(session.date) }
-      : blankFromExercise(exercises[0]),
-  );
+  const [form, setForm] = useState<TrainingSession>(() => {
+    if (!session) return blankFromExercise(exercises[0]);
+    const ex = exercises.find((e) => e.id === session.exerciseId) ?? exercises[0];
+    const count = session.sets && session.sets > 0 ? session.sets : session.ratingSets.length || 1;
+    return {
+      ...session,
+      date: toDateTimeLocal(session.date),
+      ratingSets: ratingSetsForExercise(ex, session.ratingSets, count),
+    };
+  });
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,10 +84,14 @@ export function SessionForm({
 
   const exercise = exercises.find((e) => e.id === form.exerciseId) ?? exercises[0];
 
-  function updateRating(key: string, score: number) {
+  function updateSetRating(setNumber: number, key: string, score: number) {
     setForm((f) => ({
       ...f,
-      ratings: f.ratings.map((r) => (r.key === key ? { ...r, score } : r)),
+      ratingSets: f.ratingSets.map((s) =>
+        s.setNumber === setNumber
+          ? { ...s, ratings: s.ratings.map((r) => (r.key === key ? { ...r, score } : r)) }
+          : s,
+      ),
     }));
   }
 
@@ -69,13 +101,15 @@ export function SessionForm({
     setForm((f) => ({
       ...f,
       exerciseId,
-      ratings: next.defaultRatings.map(
-        (r) =>
-          f.ratings.find((existing) => existing.key === r.key) ?? {
-            ...r,
-            score: Math.round(r.max / 2),
-          },
-      ),
+      ratingSets: ratingSetsForExercise(next, f.ratingSets, f.ratingSets.length || 1),
+    }));
+  }
+
+  function handleSetsChange(value: number | undefined) {
+    setForm((f) => ({
+      ...f,
+      sets: value,
+      ratingSets: ratingSetsForExercise(exercise, f.ratingSets, Math.max(value ?? 1, 1)),
     }));
   }
 
@@ -191,40 +225,69 @@ export function SessionForm({
 
       <fieldset className="mt-6">
         <legend className="mb-2 text-sm font-medium text-[var(--color-ink-soft)]">
-          Ratings
+          Ratings — per set
         </legend>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {form.ratings.map((r: RatingDimension) => {
-            const scale = exercise.defaultRatings.find((d) => d.key === r.key)?.scale;
-            const min = scale ? 1 : 0;
-            return (
-            <div
-              key={r.key}
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-3"
-            >
-              <div className="flex items-baseline justify-between">
-                <span className="text-sm text-[var(--color-ink-soft)]">{r.label}</span>
-                <span className="text-lg font-semibold text-[var(--color-ink)]">
-                  {r.score}
-                </span>
+        <div className="flex flex-col gap-5">
+          {form.ratingSets.map((set) => (
+            <div key={set.setNumber}>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
+                Set {set.setNumber}
+              </p>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {exercise.defaultRatings.map((def) => {
+                  const score =
+                    set.ratings.find((r) => r.key === def.key)?.score ??
+                    Math.round(def.max / 2);
+                  const min = def.scale ? 1 : 0;
+                  return (
+                    <div
+                      key={def.key}
+                      className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-3"
+                    >
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-sm text-[var(--color-ink-soft)]">{def.label}</span>
+                        <span className="text-lg font-semibold text-[var(--color-ink)]">
+                          {score}
+                        </span>
+                      </div>
+                      {def.scale && (
+                        <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+                          {def.scale[score - 1]}
+                        </p>
+                      )}
+                      <input
+                        type="range"
+                        min={min}
+                        max={def.max}
+                        value={score}
+                        onChange={(e) =>
+                          updateSetRating(set.setNumber, def.key, Number(e.target.value))
+                        }
+                        className="mt-2 w-full accent-[var(--color-sage)]"
+                      />
+                    </div>
+                  );
+                })}
               </div>
-              {scale && (
-                <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
-                  {scale[r.score - 1]}
-                </p>
-              )}
-              <input
-                type="range"
-                min={min}
-                max={r.max}
-                value={r.score}
-                onChange={(e) => updateRating(r.key, Number(e.target.value))}
-                className="mt-2 w-full accent-[var(--color-sage)]"
-              />
             </div>
-            );
-          })}
+          ))}
         </div>
+
+        {form.ratingSets.length > 1 && (
+          <div className="mt-4 rounded-lg border border-dashed border-[var(--color-border)] p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
+              Session average
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {aggregateRatings(form, exercise).map((r) => (
+                <div key={r.key} className="text-sm">
+                  <span className="text-[var(--color-ink-soft)]">{r.label}</span>{" "}
+                  <span className="font-semibold text-[var(--color-ink)]">{r.score}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </fieldset>
 
       <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
@@ -237,7 +300,7 @@ export function SessionForm({
             min={0}
             value={form.sets ?? ""}
             onChange={(e) =>
-              setForm((f) => ({ ...f, sets: e.target.value === "" ? undefined : Number(e.target.value) }))
+              handleSetsChange(e.target.value === "" ? undefined : Number(e.target.value))
             }
             className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
           />

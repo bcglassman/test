@@ -25,7 +25,7 @@ export default function SessionsAdminPage() {
           id: selected.id,
           exerciseId: selected.exerciseId,
           date: selected.date,
-          ratings: selected.ratings,
+          ratingSets: selected.ratingSets,
           sets: selected.sets,
           reps: selected.reps,
           passes: selected.passes,

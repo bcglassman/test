@@ -65,8 +65,7 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
 
         <dl className="mt-4 grid grid-cols-4 gap-x-2 gap-y-3 text-center">
           {session.ratings.map((r) => {
-            const scale = exercise.defaultRatings.find((d) => d.key === r.key)?.scale;
-            const scaleText = scale?.[r.score - 1];
+            const scaleText = r.scale?.[r.score - 1];
             return (
               <div
                 key={r.key}
