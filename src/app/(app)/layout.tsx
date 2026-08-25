@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { SessionsProvider } from "@/lib/sessions-context";
+import { ToastProvider } from "@/components/Toast";
 import "./globals.css";
 
 const inter = Inter({
@@ -26,7 +27,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[var(--color-cream)] text-[var(--color-ink)]">
-        <SessionsProvider>{children}</SessionsProvider>
+        <ToastProvider>
+          <SessionsProvider>{children}</SessionsProvider>
+        </ToastProvider>
       </body>
     </html>
   );

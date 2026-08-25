@@ -1,10 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { InfoIcon, PawIcon } from "./icons";
+import { PawIcon } from "./icons";
 import { useSessions } from "@/lib/sessions-context";
 
-export function Header({ active }: { active: "feed" | "sessions" }) {
+const NAV = [
+  { href: "/", label: "Feed", key: "feed" },
+  { href: "/sessions", label: "Sessions", key: "sessions" },
+  { href: "/exercises", label: "Exercises", key: "exercises" },
+] as const;
+
+export function Header({
+  active,
+}: {
+  active: "feed" | "sessions" | "exercises";
+}) {
   const { user, authLoading, logout } = useSessions();
 
   return (
@@ -25,21 +35,22 @@ export function Header({ active }: { active: "feed" | "sessions" }) {
         </Link>
 
         <div className="flex items-center gap-3 sm:gap-5">
-          <button
-            type="button"
-            title="A simple exercise journal for tracking Cookie's rehab and training progress."
-            className="hidden items-center gap-1.5 text-sm text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:flex"
-          >
-            <InfoIcon className="h-4 w-4" />
-            About
-          </button>
-
-          <Link
-            href={active === "sessions" ? "/" : "/sessions"}
-            className="text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
-          >
-            {active === "sessions" ? "View Feed" : "Sessions"}
-          </Link>
+          <nav className="flex items-center gap-1">
+            {NAV.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                aria-current={active === item.key ? "page" : undefined}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                  active === item.key
+                    ? "bg-[var(--color-sage-tint)] text-[var(--color-sage-dark)]"
+                    : "text-[var(--color-ink-soft)] hover:bg-white hover:text-[var(--color-ink)]"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
           {!authLoading && user ? (
             <div className="flex items-center gap-3">

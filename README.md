@@ -32,8 +32,9 @@ seeding if any exercise already exists.
   filterable feed of sessions. Each session shows its exercise, ratings, a
   trend vs. the previous session for that same exercise, and its media
   (video/photo) items. Video thumbnails play inline on click, with a small
-  control bar for pause, mute (audio starts off), slow-motion
-  (1×/0.5×/0.25×), and maximize (fullscreen).
+  control bar for pause, mute (audio starts off), playback speed
+  (1×/0.5×/0.25×/0.1× — the last for frame-by-frame form review), and
+  maximize (fullscreen).
 - **`/sessions` — Sessions.** Requires login. List of all sessions plus a
   form to add or edit one, organised around **sets**: each set is a
   self-contained card holding its own reps (or passes — toggleable per
@@ -45,7 +46,9 @@ seeding if any exercise already exists.
   "Air-conditioned gym"), and overall notes. Media can come from the local
   file picker or, when Google credentials are configured (see
   `.env.example`), straight from Google Drive. Logged out, this screen shows
-  a gate linking to `/admin/login` instead.
+  a gate linking to `/admin/login` instead. The sidebar supports free-text
+  search (across exercise name, notes, environment, set notes and media
+  captions) plus an exercise filter, and saving shows a toast confirmation.
 - **`/exercises` — Exercises.** Requires login. Read-only list of every
   exercise with its category, focus, and rating dimensions.
 - **`/exercises/new` — Add Exercise.** Requires login. Type just the

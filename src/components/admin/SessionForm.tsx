@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import type { Exercise, MediaItem, SessionSet, TrainingSession } from "@/lib/types";
-import { CategoryIcon, DriveIcon, PlusIcon, TrashIcon, UploadIcon } from "@/components/icons";
+import { CategoryIcon, DriveIcon, PawIcon, PlusIcon, TrashIcon, UploadIcon } from "@/components/icons";
 import { MediaEditorCard } from "./MediaEditorCard";
 import { mediaFromFile } from "@/lib/media-utils";
 import { aggregateRatings } from "@/lib/session-utils";
@@ -450,11 +450,11 @@ export function SessionForm({
                     Set notes
                   </span>
                   <textarea
-                    rows={2}
+                    rows={3}
                     value={set.notes ?? ""}
                     onChange={(e) => updateSet(set.setNumber, { notes: e.target.value })}
                     placeholder="What happened in this set specifically"
-                    className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] px-3 py-2 text-sm outline-none focus:border-[var(--color-sage)]"
+                    className="min-h-[4.5rem] w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] px-3 py-2 text-sm leading-relaxed outline-none focus:border-[var(--color-sage)]"
                   />
                 </label>
 
@@ -462,7 +462,7 @@ export function SessionForm({
                   <span className="mb-2 block text-xs font-medium text-[var(--color-ink-soft)]">
                     Media
                   </span>
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
                     {setMedia.map((m, i) => (
                       <MediaEditorCard
                         key={m.id}
@@ -475,6 +475,8 @@ export function SessionForm({
                         onMove={(dir) => moveMedia(m.id, dir)}
                       />
                     ))}
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
                     <button
                       type="button"
                       disabled={isUploading}
@@ -482,37 +484,30 @@ export function SessionForm({
                         pendingSetRef.current = set.setNumber;
                         fileInputRef.current?.click();
                       }}
-                      className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--color-border)] p-3 text-center text-[var(--color-ink-soft)] hover:border-[var(--color-sage)] hover:text-[var(--color-sage-dark)] disabled:opacity-50"
+                      className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--color-border)] px-4 py-3 text-center text-sm text-[var(--color-ink-soft)] hover:border-[var(--color-sage)] hover:text-[var(--color-sage-dark)] disabled:opacity-50"
                     >
-                      <UploadIcon className="h-6 w-6" />
-                      <span className="text-xs leading-snug">
-                        {busy ? (
-                          driveStatus ?? (
-                            compressPercent !== null
+                      <UploadIcon className="h-5 w-5 shrink-0" />
+                      <span className="leading-snug">
+                        {busy
+                          ? driveStatus ??
+                            (compressPercent !== null
                               ? `Compressing… ${compressPercent}%`
-                              : "Uploading…"
-                          )
-                        ) : (
-                          <>
-                            Add to set {set.setNumber}
-                            <br />
-                            MP4, MOV, JPG, PNG
-                          </>
-                        )}
+                              : "Uploading…")
+                          : `Add media to set ${set.setNumber}`}
                       </span>
                     </button>
+                    {driveEnabled && (
+                      <button
+                        type="button"
+                        disabled={isUploading}
+                        onClick={() => handleDriveImport(set.setNumber)}
+                        className="flex items-center gap-1.5 rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm font-medium text-[var(--color-sage-dark)] hover:border-[var(--color-sage)] disabled:opacity-50"
+                      >
+                        <DriveIcon className="h-4 w-4" />
+                        Google Drive
+                      </button>
+                    )}
                   </div>
-                  {driveEnabled && (
-                    <button
-                      type="button"
-                      disabled={isUploading}
-                      onClick={() => handleDriveImport(set.setNumber)}
-                      className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[var(--color-sage-dark)] hover:underline disabled:opacity-50"
-                    >
-                      <DriveIcon className="h-3.5 w-3.5" />
-                      Import from Google Drive
-                    </button>
-                  )}
                 </div>
               </div>
             );
@@ -541,12 +536,20 @@ export function SessionForm({
         </div>
       </div>
 
-      <div className="mt-8 border-t border-[var(--color-border)] pt-6">
-        <h2 className="mb-3 text-sm font-medium text-[var(--color-ink-soft)]">
-          Whole session
-        </h2>
+      {/* Deliberately a different surface from the set cards: this is the
+          session as a whole, not another set in the list. */}
+      <div className="mt-10 rounded-2xl border-2 border-[var(--color-sage)]/35 bg-[var(--color-sage-tint)]/40 p-5">
+        <div className="mb-4 flex items-center gap-2 border-b border-[var(--color-sage)]/25 pb-3">
+          <PawIcon className="h-4 w-4 shrink-0 text-[var(--color-sage-dark)]" />
+          <h2 className="font-serif text-lg text-[var(--color-ink)]">
+            Whole session
+          </h2>
+          <span className="text-xs text-[var(--color-ink-soft)]">
+            · applies across every set
+          </span>
+        </div>
 
-        <div className="rounded-2xl border border-dashed border-[var(--color-border)] p-3">
+        <div className="rounded-2xl border border-dashed border-[var(--color-sage)]/40 bg-[var(--color-card)]/70 p-3">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
             Aggregate rating — average across {form.sets.length}{" "}
             {form.sets.length === 1 ? "set" : "sets"}

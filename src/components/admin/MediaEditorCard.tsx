@@ -42,7 +42,8 @@ export function MediaEditorCard({
 }) {
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3">
-      <div className="relative mb-2.5 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg bg-[#e9e6dd]">
+      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="relative flex aspect-[4/3] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#e9e6dd] sm:w-1/2">
         {media.url && media.type === "image" && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -85,6 +86,7 @@ export function MediaEditorCard({
         </div>
       </div>
 
+      <div className="flex min-w-0 flex-1 flex-col">
       <label className="mb-2 flex items-center gap-1.5 rounded-md border border-[var(--color-border)] px-2 py-1.5">
         <PencilIcon className="h-3.5 w-3.5 shrink-0 text-[var(--color-ink-soft)]" />
         <input
@@ -94,11 +96,12 @@ export function MediaEditorCard({
           className="w-full text-sm outline-none"
         />
       </label>
-      <input
+      <textarea
         value={media.notes ?? ""}
         onChange={(e) => onChange({ notes: e.target.value })}
-        placeholder="Note for this clip"
-        className="mb-2 w-full rounded-md border border-[var(--color-border)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-sage)]"
+        placeholder="Notes for this clip — what to look for, what went well or badly"
+        rows={5}
+        className="mb-2 min-h-[6rem] w-full flex-1 resize-y rounded-md border border-[var(--color-border)] px-2 py-1.5 text-sm leading-relaxed outline-none focus:border-[var(--color-sage)]"
       />
       <label className="mb-2 block">
         <span className="mb-1 block text-xs text-[var(--color-ink-soft)]">
@@ -131,6 +134,8 @@ export function MediaEditorCard({
           ))}
         </select>
       </label>
+      </div>
+      </div>
 
       <button
         type="button"

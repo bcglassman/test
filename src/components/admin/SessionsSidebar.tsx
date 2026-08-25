@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import type { SessionWithExercise } from "@/lib/types";
 import { formatSessionDate, formatSessionTime } from "@/lib/session-utils";
 import { ChevronRightIcon, PlusIcon, TrashIcon } from "@/components/icons";
@@ -17,6 +18,38 @@ export function SessionsSidebar({
   onAddNew: () => void;
   onDelete: (id: string) => void;
 }) {
+  const [query, setQuery] = useState("");
+  const [exerciseId, setExerciseId] = useState("all");
+
+  // Exercises that actually appear in these sessions — no empty filter options.
+  const exerciseOptions = useMemo(() => {
+    const byId = new Map(sessions.map((s) => [s.exerciseId, s.exercise.name]));
+    return Array.from(byId, ([id, name]) => ({ id, name })).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }, [sessions]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return sessions.filter((s) => {
+      if (exerciseId !== "all" && s.exerciseId !== exerciseId) return false;
+      if (!q) return true;
+      // Search across the things you'd actually remember a session by.
+      const haystack = [
+        s.exercise.name,
+        s.notes,
+        s.environment,
+        formatSessionDate(s.date),
+        ...s.sets.map((set) => set.notes),
+        ...s.media.map((m) => `${m.label} ${m.notes ?? ""}`),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [sessions, query, exerciseId]);
+
   return (
     <aside className="w-full shrink-0 border-[var(--color-border)] lg:w-[300px] lg:border-r lg:pr-6">
       <div className="mb-4 flex items-center justify-between">
@@ -31,8 +64,36 @@ export function SessionsSidebar({
         </button>
       </div>
 
+      <div className="mb-3 flex flex-col gap-2">
+        <div className="relative">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search sessions…"
+            aria-label="Search sessions"
+            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm outline-none focus:border-[var(--color-sage)]"
+          />
+        </div>
+        {exerciseOptions.length > 1 && (
+          <select
+            value={exerciseId}
+            onChange={(e) => setExerciseId(e.target.value)}
+            aria-label="Filter by exercise"
+            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm outline-none focus:border-[var(--color-sage)]"
+          >
+            <option value="all">All exercises</option>
+            {exerciseOptions.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
       <ul className="flex flex-col divide-y divide-[var(--color-border)] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-        {sessions.map((s) => {
+        {visible.map((s) => {
           const active = s.id === selectedId;
           return (
             <li key={s.id} className="group relative">
@@ -69,16 +130,32 @@ export function SessionsSidebar({
             </li>
           );
         })}
-        {sessions.length === 0 && (
+        {visible.length === 0 && (
           <li className="px-4 py-6 text-center text-sm text-[var(--color-ink-soft)]">
-            No sessions yet.
+            {sessions.length === 0
+              ? "No sessions yet."
+              : "No sessions match that search."}
           </li>
         )}
       </ul>
 
-      <p className="mt-3 text-xs text-[var(--color-ink-soft)]">
-        Showing {sessions.length} of {sessions.length} sessions
-      </p>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <p className="text-xs text-[var(--color-ink-soft)]">
+          Showing {visible.length} of {sessions.length} sessions
+        </p>
+        {(query || exerciseId !== "all") && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setExerciseId("all");
+            }}
+            className="text-xs font-medium text-[var(--color-sage-dark)] hover:underline"
+          >
+            Clear
+          </button>
+        )}
+      </div>
     </aside>
   );
 }

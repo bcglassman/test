@@ -13,7 +13,7 @@ export default function NewExercisePage() {
   if (authLoading) {
     return (
       <div className="flex min-h-screen flex-col">
-        <Header active="sessions" />
+        <Header active="exercises" />
         <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16 text-center text-sm text-[var(--color-ink-soft)]">
           Loading…
         </main>
@@ -24,7 +24,7 @@ export default function NewExercisePage() {
   if (!user) {
     return (
       <div className="flex min-h-screen flex-col">
-        <Header active="sessions" />
+        <Header active="exercises" />
         <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-6 py-16 text-center">
           <h1 className="font-serif text-2xl text-[var(--color-ink)]">
             Log in to add an exercise
@@ -42,7 +42,7 @@ export default function NewExercisePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header active="sessions" />
+      <Header active="exercises" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         <ExerciseForm
           onCreated={async () => {

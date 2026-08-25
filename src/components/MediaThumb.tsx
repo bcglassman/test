@@ -26,7 +26,9 @@ function gradientFor(seed: string) {
   return gradients[Math.abs(hash) % gradients.length];
 }
 
-const SPEEDS = [1, 0.5, 0.25];
+// Down to 0.1x for frame-by-frame form review. Browsers mute audio below
+// ~0.5x anyway, which is fine here since clips start muted.
+const SPEEDS = [1, 0.5, 0.25, 0.1];
 
 function VideoPlayer({ media }: { media: MediaItem }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -151,7 +153,7 @@ function VideoPlayer({ media }: { media: MediaItem }) {
             type="button"
             onClick={cycleSpeed}
             aria-label="Playback speed"
-            title="Slow motion"
+            title="Playback speed — 1x, slow, slower, ultra-slow"
             className="rounded-md px-2 py-1 text-xs font-semibold text-white hover:bg-white/20"
           >
             {SPEEDS[speedIndex]}×

@@ -6,11 +6,13 @@ import { Header } from "@/components/Header";
 import { SessionsSidebar } from "@/components/admin/SessionsSidebar";
 import { SessionForm } from "@/components/admin/SessionForm";
 import { useSessions } from "@/lib/sessions-context";
+import { useToast } from "@/components/Toast";
 import type { TrainingSession } from "@/lib/types";
 
 export default function SessionsAdminPage() {
   const { sessions, exercises, loading, saveSession, deleteSession, user, authLoading } =
     useSessions();
+  const { showToast } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<"edit" | "new">("new");
   // Bumped on every request for a blank form, so the form remounts (and
@@ -34,9 +36,11 @@ export default function SessionsAdminPage() {
       : null;
 
   async function handleSave(session: TrainingSession) {
+    const isNew = !session.id;
     const saved = await saveSession(session);
     setSelectedId(saved.id);
     setMode("edit");
+    showToast(isNew ? "Session added" : "Session saved");
   }
 
   async function handleDelete(id: string) {
@@ -45,6 +49,7 @@ export default function SessionsAdminPage() {
       setSelectedId(null);
       setMode("new");
     }
+    showToast("Session deleted");
   }
 
   if (loading || authLoading) {
