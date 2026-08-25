@@ -9,6 +9,8 @@ import {
   PauseIcon,
   PawIcon,
   PlayIcon,
+  VolumeOffIcon,
+  VolumeOnIcon,
 } from "./icons";
 
 /** A gentle deterministic gradient so placeholder cards aren't all identical. */
@@ -33,6 +35,9 @@ function VideoPlayer({ media }: { media: MediaItem }) {
   const [hasStarted, setHasStarted] = useState(false);
   const [speedIndex, setSpeedIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Audio starts off: the feed can show several clips at once, and these are
+  // form-review videos where the picture is the point.
+  const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
     function onFullscreenChange() {
@@ -45,6 +50,12 @@ function VideoPlayer({ media }: { media: MediaItem }) {
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = SPEEDS[speedIndex];
   }, [speedIndex]);
+
+  // React doesn't reliably reflect `muted` as an attribute on first render,
+  // so mirror it onto the element directly.
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = isMuted;
+  }, [isMuted]);
 
   function togglePlay() {
     const v = videoRef.current;
@@ -60,6 +71,11 @@ function VideoPlayer({ media }: { media: MediaItem }) {
   function cycleSpeed(e: React.MouseEvent) {
     e.stopPropagation();
     setSpeedIndex((i) => (i + 1) % SPEEDS.length);
+  }
+
+  function toggleMute(e: React.MouseEvent) {
+    e.stopPropagation();
+    setIsMuted((m) => !m);
   }
 
   function toggleFullscreen(e: React.MouseEvent) {
@@ -81,6 +97,7 @@ function VideoPlayer({ media }: { media: MediaItem }) {
         ref={videoRef}
         src={media.url}
         playsInline
+        muted={isMuted}
         preload="metadata"
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
@@ -116,6 +133,19 @@ function VideoPlayer({ media }: { media: MediaItem }) {
             className="flex h-7 w-7 items-center justify-center rounded-md text-white hover:bg-white/20"
           >
             {isPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
+          </button>
+          <button
+            type="button"
+            onClick={toggleMute}
+            aria-label={isMuted ? "Unmute" : "Mute"}
+            title={isMuted ? "Unmute" : "Mute"}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-white hover:bg-white/20"
+          >
+            {isMuted ? (
+              <VolumeOffIcon className="h-4 w-4" />
+            ) : (
+              <VolumeOnIcon className="h-4 w-4" />
+            )}
           </button>
           <button
             type="button"

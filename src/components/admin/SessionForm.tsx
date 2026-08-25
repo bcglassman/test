@@ -78,6 +78,7 @@ export function SessionForm({
     };
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [compressPercent, setCompressPercent] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -121,13 +122,19 @@ export function SessionForm({
       const nextOrder = form.media.length + 1;
       const added: MediaItem[] = [];
       for (const [i, file] of Array.from(files).entries()) {
-        added.push(await mediaFromFile(file, nextOrder + i));
+        added.push(
+          await mediaFromFile(file, nextOrder + i, (fraction) =>
+            setCompressPercent(Math.round(fraction * 100)),
+          ),
+        );
+        setCompressPercent(null);
       }
       setForm((f) => ({ ...f, media: [...f.media, ...added] }));
     } catch {
       setError("Couldn't upload that file. Make sure you're logged in.");
     } finally {
       setIsUploading(false);
+      setCompressPercent(null);
     }
   }
 
@@ -374,7 +381,11 @@ export function SessionForm({
             <UploadIcon className="h-6 w-6" />
             <span className="text-xs leading-snug">
               {isUploading ? (
-                "Uploading…"
+                compressPercent !== null ? (
+                  `Compressing… ${compressPercent}%`
+                ) : (
+                  "Uploading…"
+                )
               ) : (
                 <>
                   Upload video or image

@@ -32,8 +32,8 @@ seeding if any exercise already exists.
   filterable feed of sessions. Each session shows its exercise, ratings, a
   trend vs. the previous session for that same exercise, and its media
   (video/photo) items. Video thumbnails play inline on click, with a small
-  control bar for pause, slow-motion (1×/0.5×/0.25×), and maximize
-  (fullscreen).
+  control bar for pause, mute (audio starts off), slow-motion
+  (1×/0.5×/0.25×), and maximize (fullscreen).
 - **`/sessions` — Sessions.** Requires login. List of all sessions plus a
   form to add or edit one: exercise, date/time, one row of rating sliders
   per set performed (adding/removing a set updates the rows to match), a
@@ -66,7 +66,12 @@ are in `src/collections/`:
   an exercise: a relationship to its exercise, per-set ratings, sets/reps/rest,
   notes, and an array of media items.
 - **Media** (`src/collections/Media.ts`) — Payload's built-in upload
-  collection; video/image files live here. A session's `media` array field
+  collection; video/image files live here. Videos are re-encoded smaller in
+  the browser before upload (`src/lib/video-compress.ts`) — scaled to fit
+  1280px and capped at ~2 Mbps, which cuts typical phone footage by well
+  over half. It's done client-side because this deploys to a small droplet
+  where server-side transcoding would be slow and memory-hungry; every
+  failure path falls back to uploading the original untouched. A session's `media` array field
   references Media docs plus per-item label/notes/order — so sets, videos,
   and photos are all just media items, no separate concept for each.
 - **Ratings are stored per set**: a session's `ratingSets` array has one

@@ -95,6 +95,24 @@ export function PauseIcon(props: IconProps) {
   );
 }
 
+export function VolumeOnIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 9v6h3.5L12 19V5L7.5 9H4z" />
+      <path d="M16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10" />
+    </svg>
+  );
+}
+
+export function VolumeOffIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 9v6h3.5L12 19V5L7.5 9H4z" />
+      <path d="M16 10l4 4M20 10l-4 4" />
+    </svg>
+  );
+}
+
 export function MaximizeIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

@@ -1,6 +1,7 @@
 import type { Media as PayloadMedia } from "@/payload-types";
 import type { MediaItem, MediaType } from "./types";
 import { payloadUpload } from "./payload-client";
+import { compressVideo } from "./video-compress";
 
 /**
  * Local-only id for a media row, used as a React key while editing. The CMS
@@ -17,13 +18,20 @@ function localMediaId(): string {
   return `row-${Date.now().toString(36)}-${mediaRowCounter}`;
 }
 
-/** Uploads a file to the CMS's media library and returns a ready-to-use MediaItem. */
+/**
+ * Uploads a file to the CMS's media library and returns a ready-to-use
+ * MediaItem. Videos are re-encoded smaller first (see video-compress.ts);
+ * `onCompressProgress` reports that phase, which runs in real time.
+ */
 export async function mediaFromFile(
   file: File,
   order: number,
+  onCompressProgress?: (fraction: number) => void,
 ): Promise<MediaItem> {
   const type: MediaType = file.type.startsWith("video") ? "video" : "image";
-  const { doc } = await payloadUpload<{ doc: PayloadMedia }>("media", file, {
+  const upload =
+    type === "video" ? await compressVideo(file, {}, onCompressProgress) : file;
+  const { doc } = await payloadUpload<{ doc: PayloadMedia }>("media", upload, {
     alt: file.name,
   });
   return {
