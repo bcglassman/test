@@ -12,6 +12,15 @@ const base = {
   viewBox: "0 0 24 24",
 };
 
+export function SparkleIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" stroke="none" {...props}>
+      <path d="M11 2.5c.4 2.4 1 3.9 2 4.9s2.5 1.6 4.9 2c-2.4.4-3.9 1-4.9 2s-1.6 2.5-2 4.9c-.4-2.4-1-3.9-2-4.9s-2.5-1.6-4.9-2c2.4-.4 3.9-1 4.9-2s1.6-2.5 2-4.9z" />
+      <path d="M18.5 14.5c.24 1.28.56 2.08 1.08 2.6.52.52 1.32.84 2.6 1.08-1.28.24-2.08.56-2.6 1.08-.52.52-.84 1.32-1.08 2.6-.24-1.28-.56-2.08-1.08-2.6-.52-.52-1.32-.84-2.6-1.08 1.28-.24 2.08-.56 2.6-1.08.52-.52.84-1.32 1.08-2.6z" />
+    </svg>
+  );
+}
+
 export function PawIcon(props: IconProps) {
   return (
     <svg {...base} fill="currentColor" stroke="none" {...props}>

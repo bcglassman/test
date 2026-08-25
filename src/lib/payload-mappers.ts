@@ -8,7 +8,7 @@ import type {
   Media as PayloadMedia,
   Session as PayloadSession,
 } from "@/payload-types";
-import type { Exercise, MediaItem, TrainingSession } from "./types";
+import type { Exercise, MediaItem, RatingDimension, TrainingSession } from "./types";
 
 export function mapExercise(doc: PayloadExercise): Exercise {
   return {
@@ -18,6 +18,27 @@ export function mapExercise(doc: PayloadExercise): Exercise {
     focus: doc.focus,
     description: doc.description ?? undefined,
     defaultRatings: (doc.defaultRatings ?? []).map((r) => ({
+      key: r.key,
+      label: r.label,
+      max: r.max,
+    })),
+  };
+}
+
+/** Request body for POST /api/exercises, built from our app's Exercise shape. */
+export function exerciseToPayloadBody(exercise: {
+  name: string;
+  category: Exercise["category"];
+  focus: string;
+  description?: string;
+  defaultRatings: Omit<RatingDimension, "score">[];
+}) {
+  return {
+    name: exercise.name,
+    category: exercise.category,
+    focus: exercise.focus,
+    description: exercise.description ?? null,
+    defaultRatings: exercise.defaultRatings.map((r) => ({
       key: r.key,
       label: r.label,
       max: r.max,

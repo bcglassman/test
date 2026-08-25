@@ -1,12 +1,17 @@
 import type { Exercise as PayloadExercise, Session as PayloadSession } from "@/payload-types";
-import type { Exercise, TrainingSession } from "./types";
+import type { Exercise, RatingDimension, TrainingSession } from "./types";
 import {
   payloadDelete,
   payloadGet,
   payloadPatch,
   payloadPost,
 } from "./payload-client";
-import { mapExercise, mapSession, sessionToPayloadBody } from "./payload-mappers";
+import {
+  exerciseToPayloadBody,
+  mapExercise,
+  mapSession,
+  sessionToPayloadBody,
+} from "./payload-mappers";
 
 // ---------------------------------------------------------------------------
 // Data access layer, backed by Payload CMS's REST API (see payload.config.ts
@@ -45,4 +50,19 @@ export async function saveSession(
 
 export async function deleteSession(id: string): Promise<void> {
   await payloadDelete(`sessions/${id}`);
+}
+
+export async function createExercise(exercise: {
+  name: string;
+  category: Exercise["category"];
+  focus: string;
+  description?: string;
+  defaultRatings: Omit<RatingDimension, "score">[];
+}): Promise<Exercise> {
+  const body = exerciseToPayloadBody(exercise);
+  const { doc } = await payloadPost<{ doc: PayloadExercise }>(
+    "exercises",
+    body,
+  );
+  return mapExercise(doc);
 }

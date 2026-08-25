@@ -88,9 +88,9 @@ export default function SessionsAdminPage() {
       <div className="flex min-h-screen flex-col">
         <Header active="sessions" />
         <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16 text-center text-sm text-[var(--color-ink-soft)]">
-          No exercises yet — add one in the{" "}
-          <Link href="/admin/collections/exercises" className="underline">
-            admin panel
+          No exercises yet —{" "}
+          <Link href="/exercises/new" className="underline">
+            add one
           </Link>{" "}
           before logging a session.
         </main>

@@ -24,6 +24,8 @@ interface SessionsContextValue {
   loading: boolean;
   saveSession: (session: TrainingSession) => Promise<TrainingSession>;
   deleteSession: (id: string) => Promise<void>;
+  /** Re-fetches sessions and exercises — call after creating an exercise elsewhere. */
+  refresh: () => Promise<void>;
   user: CurrentUser | null;
   authLoading: boolean;
   logout: () => Promise<void>;
@@ -91,11 +93,22 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
       loading,
       saveSession,
       deleteSession,
+      refresh,
       user,
       authLoading,
       logout,
     }),
-    [sessions, exercises, loading, saveSession, deleteSession, user, authLoading, logout],
+    [
+      sessions,
+      exercises,
+      loading,
+      saveSession,
+      deleteSession,
+      refresh,
+      user,
+      authLoading,
+      logout,
+    ],
   );
 
   return (

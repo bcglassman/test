@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import type { Exercise, MediaItem, RatingDimension, TrainingSession } from "@/lib/types";
 import { CategoryIcon, UploadIcon } from "@/components/icons";
 import { MediaEditorCard } from "./MediaEditorCard";
@@ -143,8 +144,14 @@ export function SessionForm({
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+          <span className="mb-1.5 flex items-center justify-between text-sm font-medium text-[var(--color-ink-soft)]">
             Exercise
+            <Link
+              href="/exercises/new"
+              className="font-medium text-[var(--color-sage-dark)] hover:underline"
+            >
+              + New exercise
+            </Link>
           </span>
           <select
             value={form.exerciseId}

@@ -37,10 +37,13 @@ seeding if any exercise already exists.
   sets/reps/rest, notes, and media items (upload, caption, reorder,
   remove). Logged out, this screen shows a gate linking to `/admin/login`
   instead.
-- **`/admin` — Payload's admin panel.** The full CMS: manage the Exercise
-  taxonomy, edit/delete any Session or Media doc directly, manage users.
-  This is where you'd add a brand-new exercise type before it shows up in
-  the `/sessions` dropdown.
+- **`/exercises/new` — Add Exercise.** Requires login. Type just the
+  exercise's name, then click the sparkle button to have Claude pre-fill
+  category, focus, description, and rating dimensions — all still editable
+  before saving. Needs `ANTHROPIC_API_KEY` set (see `.env.example`); without
+  it, the button shows an error and the field is still fillable by hand.
+- **`/admin` — Payload's admin panel.** The full CMS: edit/delete any
+  Exercise, Session, or Media doc directly, manage users.
 
 ## Data model
 
