@@ -32,6 +32,9 @@ interface OldMediaRow {
   notes?: string | null;
   duration?: string | null;
   order?: number | null;
+  /** Present once media gained a set; absent in the oldest backups. */
+  setNumber?: number | null;
+  capturedAt?: string | null;
 }
 
 interface OldRatingSet {
@@ -52,10 +55,14 @@ interface OldSessionDoc {
 }
 
 /**
- * Media used to float free of any set. Recover the set from a "Set N" label
- * where one exists, otherwise put it on set 1 so nothing is orphaned.
+ * Media used to float free of any set. Trust an existing setNumber when the
+ * backup has one; otherwise recover it from a "Set N" label, falling back to
+ * set 1 so nothing is orphaned.
  */
 function setNumberFor(row: OldMediaRow): number {
+  if (typeof row.setNumber === "number" && row.setNumber > 0) {
+    return row.setNumber;
+  }
   const match = /set\s*(\d+)/i.exec(row.label ?? "");
   return match ? Number(match[1]) : 1;
 }
@@ -111,6 +118,7 @@ async function main() {
         label: m.label ?? null,
         notes: m.notes ?? null,
         duration: m.duration ?? null,
+        capturedAt: m.capturedAt ?? null,
         order: m.order ?? i + 1,
       }));
     }
