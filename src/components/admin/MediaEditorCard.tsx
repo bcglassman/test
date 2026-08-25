@@ -11,6 +11,17 @@ import {
   TrashIcon,
 } from "@/components/icons";
 
+/** ISO -> the "YYYY-MM-DDTHH:mm" a datetime-local input expects, in local time. */
+function toDateTimeLocal(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`;
+}
+
 export function MediaEditorCard({
   media,
   onChange,
@@ -89,18 +100,23 @@ export function MediaEditorCard({
         placeholder="Note for this clip"
         className="mb-2 w-full rounded-md border border-[var(--color-border)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-sage)]"
       />
-      {media.capturedAt && !Number.isNaN(new Date(media.capturedAt).getTime()) && (
-        <p className="mb-2 text-xs text-[var(--color-ink-soft)]">
-          Recorded{" "}
-          {new Date(media.capturedAt).toLocaleString(undefined, {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-          })}
-        </p>
-      )}
+      <label className="mb-2 block">
+        <span className="mb-1 block text-xs text-[var(--color-ink-soft)]">
+          Captured at
+        </span>
+        <input
+          type="datetime-local"
+          value={toDateTimeLocal(media.capturedAt)}
+          onChange={(e) =>
+            onChange({
+              capturedAt: e.target.value
+                ? new Date(e.target.value).toISOString()
+                : undefined,
+            })
+          }
+          className="w-full rounded-md border border-[var(--color-border)] px-2 py-1.5 text-xs outline-none focus:border-[var(--color-sage)]"
+        />
+      </label>
       <label className="mb-2 flex items-center gap-1.5 text-xs text-[var(--color-ink-soft)]">
         Set
         <select

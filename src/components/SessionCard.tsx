@@ -6,7 +6,7 @@ import {
   CategoryIcon,
 } from "./icons";
 import { MediaThumb } from "./MediaThumb";
-import { formatSessionDate, formatSessionTime } from "@/lib/session-utils";
+import { formatSessionDate, formatSessionTime, setSummary } from "@/lib/session-utils";
 
 function Trend({ current, previous }: { current: number; previous?: number }) {
   if (previous === undefined || previous === current) return null;
@@ -26,11 +26,7 @@ function Trend({ current, previous }: { current: number; previous?: number }) {
 
 export function SessionCard({ session }: { session: SessionWithExercise }) {
   const { exercise } = session;
-  const countLabel = session.passes
-    ? `${session.sets ?? "—"} sets · ${session.passes} passes`
-    : session.sets
-      ? `${session.sets} sets · ${session.reps} reps`
-      : undefined;
+  const countLabel = setSummary(session);
 
   return (
     <article className="flex flex-col gap-5 border-b border-[var(--color-border)] py-8 first:pt-0 lg:flex-row">
@@ -114,23 +110,43 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
       </div>
 
       <div className="flex flex-1 flex-col gap-5">
-        {Array.from(new Set(session.media.map((m) => m.setNumber)))
-          .sort((a, b) => a - b)
-          .map((setNumber) => (
-            <div key={setNumber}>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
-                Set {setNumber}
-              </p>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {session.media
-                  .filter((m) => m.setNumber === setNumber)
-                  .sort((a, b) => a.order - b.order)
-                  .map((m) => (
-                    <MediaThumb key={m.id} media={m} />
-                  ))}
+        {session.sets
+          .filter(
+            (set) =>
+              set.notes ||
+              session.media.some((m) => m.setNumber === set.setNumber),
+          )
+          .map((set) => {
+            const setMedia = session.media
+              .filter((m) => m.setNumber === set.setNumber)
+              .sort((a, b) => a.order - b.order);
+            const work =
+              set.passes !== undefined
+                ? `${set.passes} passes`
+                : set.reps !== undefined
+                  ? `${set.reps} reps`
+                  : undefined;
+            return (
+              <div key={set.setNumber}>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
+                  Set {set.setNumber}
+                  {work && ` · ${work}`}
+                </p>
+                {set.notes && (
+                  <p className="mb-2 text-sm leading-relaxed text-[var(--color-ink)]">
+                    {set.notes}
+                  </p>
+                )}
+                {setMedia.length > 0 && (
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    {setMedia.map((m) => (
+                      <MediaThumb key={m.id} media={m} />
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
       </div>
     </article>
   );

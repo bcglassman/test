@@ -34,9 +34,20 @@ interface OldMediaRow {
   order?: number | null;
 }
 
+interface OldRatingSet {
+  setNumber: number;
+  ratings?: OldRating[];
+}
+
 interface OldSessionDoc {
   id: number;
+  /** Oldest shape: one flat ratings array on the session. */
   ratings?: OldRating[];
+  /** Intermediate shape: per-set ratings, before sets held reps/notes too. */
+  ratingSets?: OldRatingSet[];
+  /** Session-level reps/passes, before they moved onto each set. */
+  reps?: number | null;
+  passes?: number | null;
   media?: OldMediaRow[];
 }
 
@@ -65,18 +76,29 @@ async function main() {
   let migrated = 0;
   let skipped = 0;
   for (const doc of backup.docs) {
+    const hasRatingSets = doc.ratingSets && doc.ratingSets.length > 0;
     const hasRatings = doc.ratings && doc.ratings.length > 0;
     const hasMedia = doc.media && doc.media.length > 0;
-    if (!hasRatings && !hasMedia) {
+    if (!hasRatingSets && !hasRatings && !hasMedia) {
       skipped++;
       continue;
     }
 
     const data: Record<string, unknown> = {};
-    if (hasRatings) {
-      data.ratingSets = [
+    // Session-level reps/passes used to apply to every set equally.
+    const work = { reps: doc.reps ?? null, passes: doc.passes ?? null };
+
+    if (hasRatingSets) {
+      data.sets = doc.ratingSets!.map((s) => ({
+        setNumber: s.setNumber,
+        ...work,
+        ratings: (s.ratings ?? []).map((r) => ({ key: r.key, score: r.score })),
+      }));
+    } else if (hasRatings) {
+      data.sets = [
         {
           setNumber: 1,
+          ...work,
           ratings: doc.ratings!.map((r) => ({ key: r.key, score: r.score })),
         },
       ];

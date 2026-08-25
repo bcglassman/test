@@ -35,15 +35,17 @@ seeding if any exercise already exists.
   control bar for pause, mute (audio starts off), slow-motion
   (1×/0.5×/0.25×), and maximize (fullscreen).
 - **`/sessions` — Sessions.** Requires login. List of all sessions plus a
-  form to add or edit one: exercise, date/time, one row of rating sliders
-  per set performed (adding/removing a set updates the rows to match), a
-  live session-average readout, sets/reps/rest, environment (e.g. "Outside —
-  warm", "Air-conditioned gym"), notes, and media grouped by set — each set
-  has its own upload button, and every clip/photo can be re-assigned to a
-  different set. Media can come from the local file picker or, when Google
-  credentials are configured (see `.env.example`), straight from Google
-  Drive. Logged out, this screen shows a gate linking to `/admin/login`
-  instead.
+  form to add or edit one, organised around **sets**: each set is a
+  self-contained card holding its own reps (or passes — toggleable per
+  set), rating sliders, notes, and media, with its own upload button. Sets
+  can be added and removed; removing one renumbers the rest and moves its
+  media rather than orphaning it. Below the sets, a **Whole session**
+  section covers what spans them all: the aggregate rating (averaged across
+  sets), rest between sets, environment (e.g. "Outside — warm",
+  "Air-conditioned gym"), and overall notes. Media can come from the local
+  file picker or, when Google credentials are configured (see
+  `.env.example`), straight from Google Drive. Logged out, this screen shows
+  a gate linking to `/admin/login` instead.
 - **`/exercises` — Exercises.** Requires login. Read-only list of every
   exercise with its category, focus, and rating dimensions.
 - **`/exercises/new` — Add Exercise.** Requires login. Type just the
@@ -67,8 +69,10 @@ are in `src/collections/`:
 - **Exercise** (`src/collections/Exercises.ts`) — the reusable exercise
   definition (name, category, focus, default rating dimensions).
 - **Session** (`src/collections/Sessions.ts`) — one instance of performing
-  an exercise: a relationship to its exercise, per-set ratings, sets/reps/rest,
-  notes, and an array of media items.
+  an exercise: a relationship to its exercise, a `sets` array, and the
+  things that span sets (rest, environment, overall notes) plus its media.
+  Anything that varies set to set — reps or passes, scores, notes — lives
+  on the set, not the session (see `SessionSet` in `src/lib/types.ts`).
 - **Media** (`src/collections/Media.ts`) — Payload's built-in upload
   collection; video/image files live here. Videos are re-encoded smaller in
   the browser before upload (`src/lib/video-compress.ts`) — scaled to fit
@@ -90,9 +94,9 @@ are in `src/collections/`:
   references Media docs plus per-item `setNumber`/label/notes/order, so every
   clip or photo belongs to a specific set of the session and the feed can
   group them under it.
-- **Ratings are stored per set**: a session's `ratingSets` array has one
-  entry per set performed, each holding `{ key, score }` pairs (see
-  `src/lib/types.ts`'s `RatingSetEntry`). A dimension's label, max, and
+- **Ratings are stored per set**: each entry in a session's `sets` array
+  holds `{ key, score }` pairs alongside that set's reps/passes and notes
+  (see `src/lib/types.ts`'s `SessionSet`). A dimension's label, max, and
   optional 1–5 scale live only on the Exercise
   (`defaultRatings`) — never copied onto the session — so ratings always
   reflect the exercise's current definition. `aggregateRatings()` in

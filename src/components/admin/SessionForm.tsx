@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import type { Exercise, MediaItem, RatingSetEntry, TrainingSession } from "@/lib/types";
-import { CategoryIcon, DriveIcon, UploadIcon } from "@/components/icons";
+import type { Exercise, MediaItem, SessionSet, TrainingSession } from "@/lib/types";
+import { CategoryIcon, DriveIcon, PlusIcon, TrashIcon, UploadIcon } from "@/components/icons";
 import { MediaEditorCard } from "./MediaEditorCard";
 import { mediaFromFile } from "@/lib/media-utils";
 import { aggregateRatings } from "@/lib/session-utils";
@@ -24,26 +24,38 @@ function toDateTimeLocal(iso: string) {
   )}:${pad(d.getMinutes())}`;
 }
 
-/**
- * Builds `count` rating-set rows for `exercise`, carrying over scores from
- * `existing` by set index + dimension key where possible, so switching the
- * exercise or the set count doesn't throw away scores that still apply.
- */
-function ratingSetsForExercise(
+/** A set's ratings, seeded from the exercise's dimensions, keeping any score that still applies. */
+function ratingsForExercise(
   exercise: Exercise,
-  existing: RatingSetEntry[],
-  count: number,
-): RatingSetEntry[] {
-  return Array.from({ length: Math.max(count, 0) }, (_, i) => {
-    const prior = existing[i];
-    return {
-      setNumber: i + 1,
-      ratings: exercise.defaultRatings.map((def) => {
-        const priorScore = prior?.ratings.find((r) => r.key === def.key)?.score;
-        return { key: def.key, score: priorScore ?? Math.round(def.max / 2) };
-      }),
-    };
+  existing?: SessionSet,
+): SessionSet["ratings"] {
+  return exercise.defaultRatings.map((def) => {
+    const priorScore = existing?.ratings.find((r) => r.key === def.key)?.score;
+    return { key: def.key, score: priorScore ?? Math.round(def.max / 2) };
   });
+}
+
+function blankSet(
+  exercise: Exercise,
+  setNumber: number,
+  template?: SessionSet,
+): SessionSet {
+  return {
+    setNumber,
+    // Carry the previous set's rep count forward — sets usually repeat.
+    reps: template?.reps ?? 6,
+    passes: template?.passes,
+    notes: "",
+    ratings: ratingsForExercise(exercise),
+  };
+}
+
+/** Re-seeds every set's ratings for a different exercise, keeping the rest. */
+function setsForExercise(exercise: Exercise, existing: SessionSet[]): SessionSet[] {
+  return existing.map((set) => ({
+    ...set,
+    ratings: ratingsForExercise(exercise, set),
+  }));
 }
 
 function blankFromExercise(exercise: Exercise): TrainingSession {
@@ -53,9 +65,7 @@ function blankFromExercise(exercise: Exercise): TrainingSession {
     id: "",
     exerciseId: exercise.id,
     date: toDateTimeLocal(new Date().toISOString()),
-    ratingSets: ratingSetsForExercise(exercise, [], 3),
-    sets: 3,
-    reps: 6,
+    sets: [1, 2, 3].map((n) => blankSet(exercise, n)),
     restLabel: "~60 sec",
     notes: "",
     media: [],
@@ -76,12 +86,10 @@ export function SessionForm({
   const [form, setForm] = useState<TrainingSession>(() => {
     if (!session) return blankFromExercise(exercises[0]);
     const ex = exercises.find((e) => e.id === session.exerciseId) ?? exercises[0];
-    const count = session.sets && session.sets > 0 ? session.sets : session.ratingSets.length || 1;
-    return {
-      ...session,
-      date: toDateTimeLocal(session.date),
-      ratingSets: ratingSetsForExercise(ex, session.ratingSets, count),
-    };
+    const sets = session.sets.length
+      ? setsForExercise(ex, session.sets)
+      : [blankSet(ex, 1)];
+    return { ...session, date: toDateTimeLocal(session.date), sets };
   });
   const [isUploading, setIsUploading] = useState(false);
   const [compressPercent, setCompressPercent] = useState<number | null>(null);
@@ -99,7 +107,7 @@ export function SessionForm({
   function updateSetRating(setNumber: number, key: string, score: number) {
     setForm((f) => ({
       ...f,
-      ratingSets: f.ratingSets.map((s) =>
+      sets: f.sets.map((s) =>
         s.setNumber === setNumber
           ? { ...s, ratings: s.ratings.map((r) => (r.key === key ? { ...r, score } : r)) }
           : s,
@@ -107,28 +115,49 @@ export function SessionForm({
     }));
   }
 
-  function handleExerciseChange(exerciseId: string) {
-    const next = exercises.find((e) => e.id === exerciseId);
-    if (!next) return;
+  function updateSet(setNumber: number, patch: Partial<SessionSet>) {
     setForm((f) => ({
       ...f,
-      exerciseId,
-      ratingSets: ratingSetsForExercise(next, f.ratingSets, f.ratingSets.length || 1),
+      sets: f.sets.map((s) => (s.setNumber === setNumber ? { ...s, ...patch } : s)),
     }));
   }
 
-  function handleSetsChange(value: number | undefined) {
-    const count = Math.max(value ?? 1, 1);
-    setForm((f) => ({
-      ...f,
-      sets: value,
-      ratingSets: ratingSetsForExercise(exercise, f.ratingSets, count),
-      // Dropping sets would otherwise strand media on a set that no longer
-      // exists; pull those items back to the last remaining set.
-      media: f.media.map((m) =>
-        m.setNumber > count ? { ...m, setNumber: count } : m,
-      ),
-    }));
+  function addSet() {
+    setForm((f) => {
+      const next = f.sets.length + 1;
+      return {
+        ...f,
+        sets: [...f.sets, blankSet(exercise, next, f.sets[f.sets.length - 1])],
+      };
+    });
+  }
+
+  /** Removes a set, renumbers those after it, and moves its media rather than orphaning it. */
+  function removeSet(setNumber: number) {
+    setForm((f) => {
+      if (f.sets.length <= 1) return f;
+      const sets = f.sets
+        .filter((s) => s.setNumber !== setNumber)
+        .map((s, i) => ({ ...s, setNumber: i + 1 }));
+      const lastSet = sets.length;
+      return {
+        ...f,
+        sets,
+        media: f.media.map((m) => {
+          if (m.setNumber === setNumber) {
+            // Its set is gone — park it on the set that took its place.
+            return { ...m, setNumber: Math.min(setNumber, lastSet) };
+          }
+          return m.setNumber > setNumber ? { ...m, setNumber: m.setNumber - 1 } : m;
+        }),
+      };
+    });
+  }
+
+  function handleExerciseChange(exerciseId: string) {
+    const next = exercises.find((e) => e.id === exerciseId);
+    if (!next) return;
+    setForm((f) => ({ ...f, exerciseId, sets: setsForExercise(next, f.sets) }));
   }
 
   async function addFilesToSet(
@@ -310,219 +339,185 @@ export function SessionForm({
         </label>
       </div>
 
-      <fieldset className="mt-6">
-        <legend className="mb-2 text-sm font-medium text-[var(--color-ink-soft)]">
-          Ratings — per set
-        </legend>
-        <div className="flex flex-col gap-5">
-          {form.ratingSets.map((set) => (
-            <div key={set.setNumber}>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
-                Set {set.setNumber}
-              </p>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                {exercise.defaultRatings.map((def) => {
-                  const score =
-                    set.ratings.find((r) => r.key === def.key)?.score ??
-                    Math.round(def.max / 2);
-                  const min = def.scale ? 1 : 0;
-                  return (
-                    <div
-                      key={def.key}
-                      className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-3"
-                    >
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-sm text-[var(--color-ink-soft)]">{def.label}</span>
-                        <span className="text-lg font-semibold text-[var(--color-ink)]">
-                          {score}
-                        </span>
-                      </div>
-                      {def.scale && (
-                        <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
-                          {def.scale[score - 1]}
-                        </p>
-                      )}
-                      <input
-                        type="range"
-                        min={min}
-                        max={def.max}
-                        value={score}
-                        onChange={(e) =>
-                          updateSetRating(set.setNumber, def.key, Number(e.target.value))
-                        }
-                        className="mt-2 w-full accent-[var(--color-sage)]"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+      <div className="mt-8">
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="text-sm font-medium text-[var(--color-ink-soft)]">Sets</h2>
+          <p className="text-xs text-[var(--color-ink-soft)]">
+            Each set holds its own reps, scores, notes and media.
+          </p>
         </div>
 
-        {form.ratingSets.length > 1 && (
-          <div className="mt-4 rounded-lg border border-dashed border-[var(--color-border)] p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
-              Session average
-            </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {aggregateRatings(form, exercise).map((r) => (
-                <div key={r.key} className="text-sm">
-                  <span className="text-[var(--color-ink-soft)]">{r.label}</span>{" "}
-                  <span className="font-semibold text-[var(--color-ink)]">{r.score}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </fieldset>
-
-      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-            Sets
-          </span>
-          <input
-            type="number"
-            min={0}
-            value={form.sets ?? ""}
-            onChange={(e) =>
-              handleSetsChange(e.target.value === "" ? undefined : Number(e.target.value))
-            }
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-            Reps
-          </span>
-          <input
-            type="number"
-            min={0}
-            value={form.reps ?? ""}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, reps: e.target.value === "" ? undefined : Number(e.target.value) }))
-            }
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-            Rest
-          </span>
-          <select
-            value={form.restLabel ?? "None"}
-            onChange={(e) => setForm((f) => ({ ...f, restLabel: e.target.value }))}
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
-          >
-            {REST_PRESETS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <label className="mt-6 block">
-        <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-          Environment
-        </span>
-        <input
-          value={form.environment ?? ""}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, environment: e.target.value }))
-          }
-          placeholder="e.g. Outside — warm, or Air-conditioned gym"
-          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
-        />
-      </label>
-
-      <label className="mt-6 block">
-        <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-          Session notes
-        </span>
-        <textarea
-          rows={3}
-          value={form.notes ?? ""}
-          onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-          className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
-        />
-      </label>
-
-      <div className="mt-6">
-        <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-          Media
-        </span>
-        <p className="mb-3 text-xs text-[var(--color-ink-soft)]">
-          Every clip or photo belongs to a set — upload it under the set it was
-          taken during.
-        </p>
-        <div className="flex flex-col gap-5">
-          {form.ratingSets.map((set) => {
-            const setMedia = sortedMedia.filter(
-              (m) => m.setNumber === set.setNumber,
-            );
+        <div className="flex flex-col gap-6">
+          {form.sets.map((set) => {
+            const setMedia = sortedMedia.filter((m) => m.setNumber === set.setNumber);
             const busy = isUploading && uploadingSet === set.setNumber;
+            const usesPasses = set.passes !== undefined;
             return (
-              <div key={set.setNumber}>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
-                  Set {set.setNumber}
-                </p>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  {setMedia.map((m, i) => (
-                    <MediaEditorCard
-                      key={m.id}
-                      media={m}
-                      isFirst={i === 0}
-                      isLast={i === setMedia.length - 1}
-                      setCount={form.ratingSets.length}
-                      onChange={(patch) => updateMedia(m.id, patch)}
-                      onRemove={() => removeMedia(m.id)}
-                      onMove={(dir) => moveMedia(m.id, dir)}
-                    />
-                  ))}
-                  <button
-                    type="button"
-                    disabled={isUploading}
-                    onClick={() => {
-                      pendingSetRef.current = set.setNumber;
-                      fileInputRef.current?.click();
-                    }}
-                    className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--color-border)] p-3 text-center text-[var(--color-ink-soft)] hover:border-[var(--color-sage)] hover:text-[var(--color-sage-dark)] disabled:opacity-50"
-                  >
-                    <UploadIcon className="h-6 w-6" />
-                    <span className="text-xs leading-snug">
-                      {busy ? (
-                        driveStatus ?? (
-                          compressPercent !== null
-                            ? `Compressing… ${compressPercent}%`
-                            : "Uploading…"
-                        )
-                      ) : (
-                        <>
-                          Add to set {set.setNumber}
-                          <br />
-                          MP4, MOV, JPG, PNG
-                        </>
-                      )}
-                    </span>
-                  </button>
+              <div
+                key={set.setNumber}
+                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="font-serif text-lg text-[var(--color-ink)]">
+                    Set {set.setNumber}
+                  </h3>
+                  {form.sets.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeSet(set.setNumber)}
+                      aria-label={`Remove set ${set.setNumber}`}
+                      className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-down)]"
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" />
+                      Remove set
+                    </button>
+                  )}
                 </div>
-                {driveEnabled && (
-                  <button
-                    type="button"
-                    disabled={isUploading}
-                    onClick={() => handleDriveImport(set.setNumber)}
-                    className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[var(--color-sage-dark)] hover:underline disabled:opacity-50"
-                  >
-                    <DriveIcon className="h-3.5 w-3.5" />
-                    Import from Google Drive
-                  </button>
-                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-[var(--color-ink-soft)]">
+                      {usesPasses ? "Passes" : "Reps"}
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={(usesPasses ? set.passes : set.reps) ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? undefined : Number(e.target.value);
+                        updateSet(set.setNumber, usesPasses ? { passes: v } : { reps: v });
+                      }}
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] px-3 py-2 text-sm outline-none focus:border-[var(--color-sage)]"
+                    />
+                  </label>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateSet(
+                          set.setNumber,
+                          usesPasses
+                            ? { reps: set.passes, passes: undefined }
+                            : { passes: set.reps, reps: undefined },
+                        )
+                      }
+                      className="pb-2 text-xs font-medium text-[var(--color-sage-dark)] hover:underline"
+                    >
+                      Count in {usesPasses ? "reps" : "passes"} instead
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {exercise.defaultRatings.map((def) => {
+                    const score =
+                      set.ratings.find((r) => r.key === def.key)?.score ??
+                      Math.round(def.max / 2);
+                    const min = def.scale ? 1 : 0;
+                    return (
+                      <div
+                        key={def.key}
+                        className="rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] p-3"
+                      >
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-sm text-[var(--color-ink-soft)]">{def.label}</span>
+                          <span className="text-lg font-semibold text-[var(--color-ink)]">
+                            {score}
+                          </span>
+                        </div>
+                        {def.scale && (
+                          <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+                            {def.scale[score - 1]}
+                          </p>
+                        )}
+                        <input
+                          type="range"
+                          min={min}
+                          max={def.max}
+                          value={score}
+                          onChange={(e) =>
+                            updateSetRating(set.setNumber, def.key, Number(e.target.value))
+                          }
+                          className="mt-2 w-full accent-[var(--color-sage)]"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <label className="mt-4 block">
+                  <span className="mb-1.5 block text-xs font-medium text-[var(--color-ink-soft)]">
+                    Set notes
+                  </span>
+                  <textarea
+                    rows={2}
+                    value={set.notes ?? ""}
+                    onChange={(e) => updateSet(set.setNumber, { notes: e.target.value })}
+                    placeholder="What happened in this set specifically"
+                    className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] px-3 py-2 text-sm outline-none focus:border-[var(--color-sage)]"
+                  />
+                </label>
+
+                <div className="mt-4">
+                  <span className="mb-2 block text-xs font-medium text-[var(--color-ink-soft)]">
+                    Media
+                  </span>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    {setMedia.map((m, i) => (
+                      <MediaEditorCard
+                        key={m.id}
+                        media={m}
+                        isFirst={i === 0}
+                        isLast={i === setMedia.length - 1}
+                        setCount={form.sets.length}
+                        onChange={(patch) => updateMedia(m.id, patch)}
+                        onRemove={() => removeMedia(m.id)}
+                        onMove={(dir) => moveMedia(m.id, dir)}
+                      />
+                    ))}
+                    <button
+                      type="button"
+                      disabled={isUploading}
+                      onClick={() => {
+                        pendingSetRef.current = set.setNumber;
+                        fileInputRef.current?.click();
+                      }}
+                      className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--color-border)] p-3 text-center text-[var(--color-ink-soft)] hover:border-[var(--color-sage)] hover:text-[var(--color-sage-dark)] disabled:opacity-50"
+                    >
+                      <UploadIcon className="h-6 w-6" />
+                      <span className="text-xs leading-snug">
+                        {busy ? (
+                          driveStatus ?? (
+                            compressPercent !== null
+                              ? `Compressing… ${compressPercent}%`
+                              : "Uploading…"
+                          )
+                        ) : (
+                          <>
+                            Add to set {set.setNumber}
+                            <br />
+                            MP4, MOV, JPG, PNG
+                          </>
+                        )}
+                      </span>
+                    </button>
+                  </div>
+                  {driveEnabled && (
+                    <button
+                      type="button"
+                      disabled={isUploading}
+                      onClick={() => handleDriveImport(set.setNumber)}
+                      className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[var(--color-sage-dark)] hover:underline disabled:opacity-50"
+                    >
+                      <DriveIcon className="h-3.5 w-3.5" />
+                      Import from Google Drive
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
+
           <input
             ref={fileInputRef}
             type="file"
@@ -534,7 +529,81 @@ export function SessionForm({
               e.target.value = "";
             }}
           />
+
+          <button
+            type="button"
+            onClick={addSet}
+            className="flex w-fit items-center gap-1.5 text-sm font-medium text-[var(--color-sage-dark)] hover:underline"
+          >
+            <PlusIcon className="h-3.5 w-3.5" />
+            Add set
+          </button>
         </div>
+      </div>
+
+      <div className="mt-8 border-t border-[var(--color-border)] pt-6">
+        <h2 className="mb-3 text-sm font-medium text-[var(--color-ink-soft)]">
+          Whole session
+        </h2>
+
+        <div className="rounded-2xl border border-dashed border-[var(--color-border)] p-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
+            Aggregate rating — average across {form.sets.length}{" "}
+            {form.sets.length === 1 ? "set" : "sets"}
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {aggregateRatings(form, exercise).map((r) => (
+              <div key={r.key} className="text-sm">
+                <span className="text-[var(--color-ink-soft)]">{r.label}</span>{" "}
+                <span className="font-semibold text-[var(--color-ink)]">{r.score}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+              Rest between sets
+            </span>
+            <select
+              value={form.restLabel ?? "None"}
+              onChange={(e) => setForm((f) => ({ ...f, restLabel: e.target.value }))}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
+            >
+              {REST_PRESETS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+              Environment
+            </span>
+            <input
+              value={form.environment ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, environment: e.target.value }))}
+              placeholder="e.g. Outside — warm, or Air-conditioned gym"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
+            />
+          </label>
+        </div>
+
+        <label className="mt-5 block">
+          <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+            Session notes
+          </span>
+          <textarea
+            rows={3}
+            value={form.notes ?? ""}
+            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+            placeholder="How the session went overall"
+            className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
+          />
+        </label>
       </div>
 
       {error && (

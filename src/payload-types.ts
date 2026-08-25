@@ -186,11 +186,20 @@ export interface Session {
   exercise: number | Exercise;
   date: string;
   /**
-   * One entry per set performed. Labels/max/scale come from the exercise's own rating dimensions, not stored here.
+   * One entry per set performed, holding that set's work, scores and notes. Rating labels/max/scale come from the exercise's own dimensions, not stored here.
    */
-  ratingSets?:
+  sets?:
     | {
         setNumber: number;
+        reps?: number | null;
+        /**
+         * For exercises counted in passes rather than reps (e.g. cavaletti).
+         */
+        passes?: number | null;
+        /**
+         * Note about this set specifically.
+         */
+        notes?: string | null;
         ratings?:
           | {
               key: string;
@@ -201,9 +210,9 @@ export interface Session {
         id?: string | null;
       }[]
     | null;
-  sets?: number | null;
-  reps?: number | null;
-  passes?: number | null;
+  /**
+   * Rest taken between sets.
+   */
   restLabel?: string | null;
   /**
    * Where and under what conditions, e.g. "Outside — warm" or "Air-conditioned gym".
@@ -386,10 +395,13 @@ export interface ExercisesSelect<T extends boolean = true> {
 export interface SessionsSelect<T extends boolean = true> {
   exercise?: T;
   date?: T;
-  ratingSets?:
+  sets?:
     | T
     | {
         setNumber?: T;
+        reps?: T;
+        passes?: T;
+        notes?: T;
         ratings?:
           | T
           | {
@@ -399,9 +411,6 @@ export interface SessionsSelect<T extends boolean = true> {
             };
         id?: T;
       };
-  sets?: T;
-  reps?: T;
-  passes?: T;
   restLabel?: T;
   environment?: T;
   notes?: T;

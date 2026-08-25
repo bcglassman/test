@@ -12,7 +12,7 @@ import type {
   Exercise,
   MediaItem,
   RatingDimension,
-  RatingSetEntry,
+  SessionSet,
   TrainingSession,
 } from "./types";
 
@@ -80,11 +80,14 @@ function mapMediaItem(
   };
 }
 
-function mapRatingSet(
-  set: NonNullable<PayloadSession["ratingSets"]>[number],
-): RatingSetEntry {
+function mapSessionSet(
+  set: NonNullable<PayloadSession["sets"]>[number],
+): SessionSet {
   return {
     setNumber: set.setNumber,
+    reps: set.reps ?? undefined,
+    passes: set.passes ?? undefined,
+    notes: set.notes ?? undefined,
     ratings: (set.ratings ?? []).map((r) => ({ key: r.key, score: r.score })),
   };
 }
@@ -96,10 +99,7 @@ export function mapSession(doc: PayloadSession): TrainingSession {
       typeof doc.exercise === "number" ? doc.exercise : doc.exercise.id,
     ),
     date: doc.date,
-    ratingSets: (doc.ratingSets ?? []).map(mapRatingSet),
-    sets: doc.sets ?? undefined,
-    reps: doc.reps ?? undefined,
-    passes: doc.passes ?? undefined,
+    sets: (doc.sets ?? []).map(mapSessionSet),
     restLabel: doc.restLabel ?? undefined,
     notes: doc.notes ?? undefined,
     environment: doc.environment ?? undefined,
@@ -112,13 +112,13 @@ export function sessionToPayloadBody(session: TrainingSession) {
   return {
     exercise: Number(session.exerciseId),
     date: session.date,
-    ratingSets: session.ratingSets.map((s) => ({
+    sets: session.sets.map((s) => ({
       setNumber: s.setNumber,
+      reps: s.reps ?? null,
+      passes: s.passes ?? null,
+      notes: s.notes ?? null,
       ratings: s.ratings.map((r) => ({ key: r.key, score: r.score })),
     })),
-    sets: session.sets ?? null,
-    reps: session.reps ?? null,
-    passes: session.passes ?? null,
     restLabel: session.restLabel ?? null,
     notes: session.notes ?? null,
     environment: session.environment ?? null,

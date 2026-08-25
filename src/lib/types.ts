@@ -72,9 +72,18 @@ export interface RatingScore {
   score: number;
 }
 
-/** One performed set's scores, keyed to the exercise's rating dimensions. */
-export interface RatingSetEntry {
+/**
+ * One performed set. Everything that varies set to set lives here — the
+ * work done, how it scored, and any note about that specific set. Media
+ * belongs to a set too, but is stored on the session (see
+ * `TrainingSession.media`) and joined by `setNumber`.
+ */
+export interface SessionSet {
   setNumber: number;
+  reps?: number;
+  /** Some exercises log "passes" instead of reps (e.g. cavaletti). */
+  passes?: number;
+  notes?: string;
   ratings: RatingScore[];
 }
 
@@ -83,13 +92,11 @@ export interface TrainingSession {
   exerciseId: string;
   /** ISO 8601 timestamp. */
   date: string;
-  /** Per-set scores. Session-level scores are the average across these — see aggregateRatings(). */
-  ratingSets: RatingSetEntry[];
-  sets?: number;
-  reps?: number;
-  /** Some exercises log "passes" instead of reps (e.g. cavaletti). */
-  passes?: number;
+  /** The sets performed. Session-level scores are the average across these — see aggregateRatings(). */
+  sets: SessionSet[];
+  /** Rest taken between sets — a property of the session, not any one set. */
   restLabel?: string;
+  /** Notes about the session as a whole; per-set notes live on the set. */
   notes?: string;
   /** Where/under what conditions, e.g. "Outside — warm" or "Air-conditioned gym". */
   environment?: string;

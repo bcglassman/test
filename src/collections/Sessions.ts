@@ -30,14 +30,28 @@ export const Sessions: CollectionConfig = {
       },
     },
     {
-      name: "ratingSets",
+      name: "sets",
       type: "array",
       admin: {
         description:
-          "One entry per set performed. Labels/max/scale come from the exercise's own rating dimensions, not stored here.",
+          "One entry per set performed, holding that set's work, scores and notes. Rating labels/max/scale come from the exercise's own dimensions, not stored here.",
       },
       fields: [
         { name: "setNumber", type: "number", required: true },
+        { name: "reps", type: "number" },
+        {
+          name: "passes",
+          type: "number",
+          admin: {
+            description:
+              'For exercises counted in passes rather than reps (e.g. cavaletti).',
+          },
+        },
+        {
+          name: "notes",
+          type: "textarea",
+          admin: { description: "Note about this set specifically." },
+        },
         {
           name: "ratings",
           type: "array",
@@ -48,10 +62,11 @@ export const Sessions: CollectionConfig = {
         },
       ],
     },
-    { name: "sets", type: "number" },
-    { name: "reps", type: "number" },
-    { name: "passes", type: "number" },
-    { name: "restLabel", type: "text" },
+    {
+      name: "restLabel",
+      type: "text",
+      admin: { description: "Rest taken between sets." },
+    },
     {
       name: "environment",
       type: "text",

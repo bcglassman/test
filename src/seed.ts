@@ -13,12 +13,21 @@ const ratingDims = [
   { key: "effort", label: "Effort", max: 10 },
 ];
 
-/** Builds one ratingSets entry per column of per-set scores, e.g. { form: [5, 6, 7] } -> 3 sets. */
-function ratingSets(perDimensionScores: Record<string, number[]>) {
+/**
+ * Builds the sets array from per-dimension score columns, e.g.
+ * { form: [5, 6, 7] } -> 3 sets. `work` sets each set's reps (or passes).
+ */
+function buildSets(
+  perDimensionScores: Record<string, number[]>,
+  work: { reps?: number[]; passes?: number[]; notes?: string[] } = {},
+) {
   const keys = Object.keys(perDimensionScores);
   const count = Math.max(...keys.map((k) => perDimensionScores[k].length));
   return Array.from({ length: count }, (_, i) => ({
     setNumber: i + 1,
+    reps: work.reps?.[i],
+    passes: work.passes?.[i],
+    notes: work.notes?.[i],
     ratings: keys.map((key) => ({ key, score: perDimensionScores[key][i] })),
   }));
 }
@@ -111,18 +120,26 @@ async function main() {
     data: {
       exercise: sitToStand.id,
       date: "2026-08-24T10:35:00.000Z",
-      sets: 3,
-      reps: 6,
       restLabel: "~60 sec",
       environment: "Air-conditioned gym",
       notes:
         "Better control today. Left knee begins moving outward near fatigue.",
-      ratingSets: ratingSets({
-        form: [5, 6, 7],
-        control: [7, 8, 9],
-        symmetry: [5, 6, 7],
-        effort: [6, 7, 8],
-      }),
+      sets: buildSets(
+        {
+          form: [5, 6, 7],
+          control: [7, 8, 9],
+          symmetry: [5, 6, 7],
+          effort: [6, 7, 8],
+        },
+        {
+          reps: [6, 6, 6],
+          notes: [
+            "Slow to commit on the first two reps.",
+            "Much cleaner once warmed up.",
+            "Left knee drifting outward by the last rep.",
+          ],
+        },
+      ),
       media: [
         { setNumber: 1, type: "video", file: sageImg.id, label: "Set 1", notes: "Good alignment early", duration: "0:12", order: 1 },
         { setNumber: 2, type: "video", file: tanImg.id, label: "Set 2", notes: "More controlled descent", duration: "0:11", order: 2 },
@@ -136,17 +153,25 @@ async function main() {
     data: {
       exercise: cavaletti.id,
       date: "2026-08-23T18:20:00.000Z",
-      sets: 3,
-      passes: 5,
       restLabel: "~45 sec",
       environment: "Outside — cool, overcast",
       notes: "Steady, deliberate steps. Good hip engagement on the left.",
-      ratingSets: ratingSets({
-        form: [7, 8, 9],
-        control: [7, 8, 9],
-        symmetry: [8, 9, 10],
-        effort: [6, 7, 8],
-      }),
+      sets: buildSets(
+        {
+          form: [7, 8, 9],
+          control: [7, 8, 9],
+          symmetry: [8, 9, 10],
+          effort: [6, 7, 8],
+        },
+        {
+          passes: [5, 5, 5],
+          notes: [
+            "Smooth entry, no rail contact.",
+            "Rhythm improving through the middle.",
+            "Best set — consistent foot placement throughout.",
+          ],
+        },
+      ),
       media: [
         { setNumber: 1, type: "video", file: cav1.id, label: "Set 1", notes: "Smooth entry", duration: "0:13", order: 1 },
         { setNumber: 2, type: "video", file: cav2.id, label: "Set 2", notes: "Improved rhythm", duration: "0:12", order: 2 },
@@ -163,12 +188,10 @@ async function main() {
       restLabel: "~10 min",
       environment: "Indoor treadmill room",
       notes: "Warm-up to working pace and back down without soreness after.",
-      ratingSets: ratingSets({
-        form: [7],
-        control: [7],
-        symmetry: [7],
-        effort: [8],
-      }),
+      sets: buildSets(
+        { form: [7], control: [7], symmetry: [7], effort: [8] },
+        { notes: ["Continuous walk — warm-up, working pace, cool down."] },
+      ),
       media: [
         { setNumber: 1, type: "video", file: tmWarm.id, label: "Warm up", duration: "0:10", order: 1 },
         { setNumber: 1, type: "video", file: tmWork.id, label: "Working set", duration: "0:15", order: 2 },
@@ -182,17 +205,18 @@ async function main() {
     data: {
       exercise: sitToStand.id,
       date: "2026-08-18T15:40:00.000Z",
-      sets: 3,
-      reps: 5,
       restLabel: "~60 sec",
       environment: "Air-conditioned gym",
       notes: "First session back after rest. Cautious but willing.",
-      ratingSets: ratingSets({
-        form: [4, 5, 6],
-        control: [5, 6, 7],
-        symmetry: [4, 5, 6],
-        effort: [5, 6, 7],
-      }),
+      sets: buildSets(
+        {
+          form: [4, 5, 6],
+          control: [5, 6, 7],
+          symmetry: [4, 5, 6],
+          effort: [5, 6, 7],
+        },
+        { reps: [5, 5, 5] },
+      ),
       media: [],
     },
   });
