@@ -86,6 +86,39 @@ export function PlayIcon(props: IconProps) {
   );
 }
 
+export function PauseIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" stroke="none" {...props}>
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </svg>
+  );
+}
+
+export function MaximizeIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" />
+    </svg>
+  );
+}
+
+export function MinimizeIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" />
+    </svg>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
 export function ImageIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

@@ -31,7 +31,9 @@ seeding if any exercise already exists.
 - **`/` — Training Feed.** Public, no login needed. A chronological,
   filterable feed of sessions. Each session shows its exercise, ratings, a
   trend vs. the previous session for that same exercise, and its media
-  (video/photo) items.
+  (video/photo) items. Video thumbnails play inline on click, with a small
+  control bar for pause, slow-motion (1×/0.5×/0.25×), and maximize
+  (fullscreen).
 - **`/sessions` — Sessions.** Requires login. List of all sessions plus a
   form to add or edit one: exercise, date/time, one row of rating sliders
   per set performed (adding/removing a set updates the rows to match), a
