@@ -116,6 +116,10 @@ server {
     listen 80 default_server;
     server_name _;
 
+    # Allow larger uploads (training videos) through the proxy — nginx's
+    # own default is 1m, far below what a video clip needs.
+    client_max_body_size 200M;
+
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;

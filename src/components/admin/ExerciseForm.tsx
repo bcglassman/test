@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import type { ExerciseCategory, RatingDimension } from "@/lib/types";
+import type { ExerciseCategory } from "@/lib/types";
 import { createExercise } from "@/lib/data-source";
 import {
   suggestExerciseDetails,
   type SuggestedExerciseDetails,
 } from "@/lib/actions/suggest-exercise";
-import { CategoryIcon, PlusIcon, SparkleIcon, TrashIcon } from "@/components/icons";
+import { RATING_LIBRARY } from "@/lib/rating-library";
+import {
+  RatingDimensionEditor,
+  type RatingDraft,
+} from "./RatingDimensionEditor";
+import { CategoryIcon, PlusIcon, SparkleIcon } from "@/components/icons";
 
 const CATEGORIES: ExerciseCategory[] = [
   "Strength",
@@ -27,8 +32,6 @@ function slugify(label: string): string {
   );
 }
 
-type RatingDraft = Omit<RatingDimension, "score">;
-
 export function ExerciseForm({
   onCreated,
   onCancel,
@@ -41,8 +44,8 @@ export function ExerciseForm({
   const [focus, setFocus] = useState("");
   const [description, setDescription] = useState("");
   const [ratings, setRatings] = useState<RatingDraft[]>([
-    { key: "form", label: "Form", max: 10 },
-    { key: "control", label: "Control", max: 10 },
+    RATING_LIBRARY[0], // Form
+    RATING_LIBRARY[1], // Control
   ]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -74,7 +77,7 @@ export function ExerciseForm({
   }
 
   function addRating() {
-    setRatings((r) => [...r, { key: "", label: "", max: 10 }]);
+    setRatings((r) => [...r, { key: "", label: "", max: 5 }]);
   }
 
   function removeRating(index: number) {
@@ -186,40 +189,35 @@ export function ExerciseForm({
         <span className="mb-2 block text-sm font-medium text-[var(--color-ink-soft)]">
           Default rating dimensions
         </span>
+        <p className="mb-2 text-xs text-[var(--color-ink-soft)]">
+          Pick a standard dimension from the library for consistent wording
+          across exercises, or type your own and use the sparkle button to
+          write a 1–5 scale for it.
+        </p>
         <div className="flex flex-col gap-2">
           {ratings.map((r, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                value={r.label}
-                onChange={(e) => updateRating(i, { label: e.target.value })}
-                placeholder="Label, e.g. Form"
-                className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm outline-none focus:border-[var(--color-sage)]"
-              />
-              <input
-                type="number"
-                min={1}
-                value={r.max}
-                onChange={(e) => updateRating(i, { max: Number(e.target.value) })}
-                className="w-16 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-2 text-center text-sm outline-none focus:border-[var(--color-sage)]"
-              />
-              <button
-                type="button"
-                onClick={() => removeRating(i)}
-                aria-label="Remove dimension"
-                className="rounded-md p-1.5 text-[var(--color-ink-soft)] hover:bg-[var(--color-cream)] hover:text-[var(--color-down)]"
-              >
-                <TrashIcon className="h-4 w-4" />
-              </button>
-            </div>
+            <RatingDimensionEditor
+              key={i}
+              rating={r}
+              exerciseName={name}
+              onChange={(patch) => updateRating(i, patch)}
+              onRemove={() => removeRating(i)}
+            />
           ))}
-          <button
-            type="button"
-            onClick={addRating}
-            className="flex w-fit items-center gap-1.5 text-sm font-medium text-[var(--color-sage-dark)] hover:underline"
-          >
-            <PlusIcon className="h-3.5 w-3.5" />
-            Add dimension
-          </button>
+          {ratings.length < 5 ? (
+            <button
+              type="button"
+              onClick={addRating}
+              className="flex w-fit items-center gap-1.5 text-sm font-medium text-[var(--color-sage-dark)] hover:underline"
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+              Add dimension
+            </button>
+          ) : (
+            <p className="text-xs text-[var(--color-ink-soft)]">
+              Maximum of 5 rating dimensions per exercise.
+            </p>
+          )}
         </div>
       </div>
 

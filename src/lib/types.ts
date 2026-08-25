@@ -32,6 +32,13 @@ export interface RatingDimension {
   label: string;
   score: number;
   max: number;
+  /**
+   * Optional rubric: exactly 5 short descriptions for what a score of 1
+   * through 5 means for this dimension on this exercise (e.g. score 4 on
+   * "Form" -> "Maintains Good Form"). Lives on the Exercise, not per
+   * session, so it stays consistent across every logged session.
+   */
+  scale?: string[];
 }
 
 export type ExerciseCategory =

@@ -21,6 +21,7 @@ export function mapExercise(doc: PayloadExercise): Exercise {
       key: r.key,
       label: r.label,
       max: r.max,
+      scale: r.scale ?? undefined,
     })),
   };
 }
@@ -42,6 +43,7 @@ export function exerciseToPayloadBody(exercise: {
       key: r.key,
       label: r.label,
       max: r.max,
+      scale: r.scale && r.scale.length === 5 ? r.scale : undefined,
     })),
   };
 }

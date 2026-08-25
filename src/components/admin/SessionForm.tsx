@@ -194,7 +194,10 @@ export function SessionForm({
           Ratings
         </legend>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {form.ratings.map((r: RatingDimension) => (
+          {form.ratings.map((r: RatingDimension) => {
+            const scale = exercise.defaultRatings.find((d) => d.key === r.key)?.scale;
+            const min = scale ? 1 : 0;
+            return (
             <div
               key={r.key}
               className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-3"
@@ -205,16 +208,22 @@ export function SessionForm({
                   {r.score}
                 </span>
               </div>
+              {scale && (
+                <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+                  {scale[r.score - 1]}
+                </p>
+              )}
               <input
                 type="range"
-                min={0}
+                min={min}
                 max={r.max}
                 value={r.score}
                 onChange={(e) => updateRating(r.key, Number(e.target.value))}
                 className="mt-2 w-full accent-[var(--color-sage)]"
               />
             </div>
-          ))}
+            );
+          })}
         </div>
       </fieldset>
 

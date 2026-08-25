@@ -47,7 +47,18 @@ export const Exercises: CollectionConfig = {
       fields: [
         { name: "key", type: "text", required: true },
         { name: "label", type: "text", required: true },
-        { name: "max", type: "number", required: true, defaultValue: 10 },
+        { name: "max", type: "number", required: true, defaultValue: 5 },
+        {
+          name: "scale",
+          type: "text",
+          hasMany: true,
+          minRows: 5,
+          maxRows: 5,
+          admin: {
+            description:
+              'Optional rubric: exactly 5 short descriptions for scores 1-5, e.g. "Maintains Good Form" for a 4.',
+          },
+        },
       ],
     },
   ],

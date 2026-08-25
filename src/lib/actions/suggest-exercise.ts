@@ -1,16 +1,14 @@
 "use server";
 
-import { headers as nextHeaders } from "next/headers";
-import { getPayload } from "payload";
 import Anthropic from "@anthropic-ai/sdk";
-import config from "@payload-config";
 import type { ExerciseCategory } from "@/lib/types";
+import { requireLoggedInUser } from "./ai-shared";
 
 export interface SuggestedExerciseDetails {
   category: ExerciseCategory;
   focus: string;
   description: string;
-  defaultRatings: { key: string; label: string; max: number }[];
+  defaultRatings: { key: string; label: string; max: number; scale: string[] }[];
 }
 
 const CATEGORIES: ExerciseCategory[] = [
@@ -23,9 +21,7 @@ const CATEGORIES: ExerciseCategory[] = [
 
 /**
  * Given just an exercise name, asks Claude to fill in the rest of the
- * Exercise fields. Requires a logged-in Payload user, checked server-side
- * here — not just gated by the calling page — same as every other write in
- * this app.
+ * Exercise fields, including a 5-level rubric per rating dimension.
  */
 export async function suggestExerciseDetails(
   name: string,
@@ -35,16 +31,12 @@ export async function suggestExerciseDetails(
     throw new Error("Exercise name is required.");
   }
 
-  const payload = await getPayload({ config });
-  const { user } = await payload.auth({ headers: await nextHeaders() });
-  if (!user) {
-    throw new Error("You must be logged in to use AI suggestions.");
-  }
+  await requireLoggedInUser();
 
   const client = new Anthropic();
   const response = await client.messages.create({
     model: "claude-opus-5",
-    max_tokens: 1024,
+    max_tokens: 2048,
     system:
       "You help fill in metadata for exercises in Cookie Training, a dog " +
       "training and physical-rehab exercise journal. Given just an " +
@@ -101,10 +93,21 @@ export async function suggestExerciseDetails(
                   },
                   max: {
                     type: "number",
-                    description: "Max score for this dimension, normally 10.",
+                    enum: [5],
+                    description: "Always 5 — every dimension uses a 1-5 scale.",
+                  },
+                  scale: {
+                    type: "array",
+                    minItems: 5,
+                    maxItems: 5,
+                    description:
+                      "Exactly 5 short phrases describing what a score of 1 " +
+                      "through 5 means for this dimension, worst to best, " +
+                      'e.g. ["Significant Form Breakdown", ..., "Maintains Excellent Form Throughout"].',
+                    items: { type: "string" },
                   },
                 },
-                required: ["key", "label", "max"],
+                required: ["key", "label", "max", "scale"],
                 additionalProperties: false,
               },
             },

@@ -63,15 +63,25 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
           <Trend current={session.overall} previous={session.previousOverall} />
         </div>
 
-        <dl className="mt-4 grid grid-cols-4 gap-2 text-center">
-          {session.ratings.map((r) => (
-            <div key={r.key}>
-              <dt className="text-xs text-[var(--color-ink-soft)]">{r.label}</dt>
-              <dd className="text-lg font-semibold text-[var(--color-ink)]">
-                {r.score}
-              </dd>
-            </div>
-          ))}
+        <dl className="mt-4 grid grid-cols-4 gap-x-2 gap-y-3 text-center">
+          {session.ratings.map((r) => {
+            const scale = exercise.defaultRatings.find((d) => d.key === r.key)?.scale;
+            const scaleText = scale?.[r.score - 1];
+            return (
+              <div
+                key={r.key}
+                title={scaleText}
+                className="flex flex-col items-center"
+              >
+                <dt className="flex min-h-[2rem] items-center justify-center text-xs leading-tight text-[var(--color-ink-soft)]">
+                  {r.label}
+                </dt>
+                <dd className="text-lg font-semibold text-[var(--color-ink)]">
+                  {r.score}
+                </dd>
+              </div>
+            );
+          })}
         </dl>
 
         {countLabel && (

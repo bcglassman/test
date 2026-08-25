@@ -42,6 +42,11 @@ seeding if any exercise already exists.
   category, focus, description, and rating dimensions — all still editable
   before saving. Needs `ANTHROPIC_API_KEY` set (see `.env.example`); without
   it, the button shows an error and the field is still fillable by hand.
+  Each rating dimension can be picked from a small built-in library
+  (`src/lib/rating-library.ts`) for consistent wording across exercises, or
+  typed by hand and given a 1–5 descriptive scale via its own sparkle
+  button. Capped at 5 dimensions per exercise so the feed's ratings row
+  stays readable.
 - **`/admin` — Payload's admin panel.** The full CMS: edit/delete any
   Exercise, Session, or Media doc directly, manage users.
 

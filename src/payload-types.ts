@@ -167,6 +167,10 @@ export interface Exercise {
         key: string;
         label: string;
         max: number;
+        /**
+         * Optional rubric: exactly 5 short descriptions for scores 1-5, e.g. "Maintains Good Form" for a 4.
+         */
+        scale?: string[] | null;
         id?: string | null;
       }[]
     | null;
@@ -350,6 +354,7 @@ export interface ExercisesSelect<T extends boolean = true> {
         key?: T;
         label?: T;
         max?: T;
+        scale?: T;
         id?: T;
       };
   updatedAt?: T;
