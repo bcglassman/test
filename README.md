@@ -88,6 +88,27 @@ just works with the CMS-agnostic types in `types.ts`. Concretely:
   `/api/media` and gets back a real asset id + URL, which is then
   referenced when the session is saved.
 
+## Running over plain HTTP vs HTTPS
+
+Deployed on a bare IP with no TLS yet, so a few things are deliberately
+tuned for a plain-HTTP origin. Each is driven by
+`PAYLOAD_PUBLIC_SERVER_URL`, so adding a domain + TLS and setting that to
+the `https://` URL tightens them automatically:
+
+- The auth cookie only gets the `Secure` flag when that URL is `https://`
+  (`src/collections/Users.ts`). `Secure` on plain HTTP means the browser
+  accepts the cookie but never sends it back, so logins appear to succeed
+  and then silently don't stick.
+- `serverURL` is left unset in `src/payload.config.ts` so Payload's CSRF
+  allowlist stays empty. A non-empty allowlist makes Payload only honour
+  the auth cookie when the request carries an `Origin` or `Sec-Fetch-Site`
+  header, and plain top-level navigations to `/admin` send neither. The
+  `SameSite=Lax` cookie still blocks cross-site writes. See the comment in
+  that file before re-adding `serverURL`.
+- Avoid browser APIs that require a *secure context* — they're simply
+  undefined on a plain-HTTP origin even though they work on `localhost`.
+  `crypto.randomUUID()` bit us this way in `src/lib/media-utils.ts`.
+
 ## Project layout notes
 
 - Payload renders its own `<html>`/`<body>` for `/admin`, so the app is
