@@ -6,6 +6,13 @@ import type { LibraryRating } from "@/lib/rating-library";
 import { RatingLibraryPicker } from "./RatingLibraryPicker";
 import { CloseIcon } from "@/components/icons";
 
+/** Five rows, keeping whatever wording is already there. */
+function padScale(scale?: string[]): string[] {
+  const next = ["", "", "", "", ""];
+  (scale ?? []).slice(0, 5).forEach((s, i) => (next[i] = s));
+  return next;
+}
+
 function slugify(label: string): string {
   return (
     label
@@ -35,9 +42,10 @@ export function RatingDefModal({
 }) {
   const [label, setLabel] = useState(initial?.label ?? "");
   const [max, setMax] = useState(initial?.max ?? 5);
-  const [scale, setScale] = useState<string[]>(
-    initial?.scale ?? ["", "", "", "", ""],
-  );
+  // Always exactly five rows to type into, however many the definition
+  // arrived with — including none, which is the common case for a rating
+  // that has never had its wording filled in.
+  const [scale, setScale] = useState<string[]>(() => padScale(initial?.scale));
   const [useScale, setUseScale] = useState(Boolean(initial?.scale?.length));
 
   useEffect(() => {
@@ -51,7 +59,7 @@ export function RatingDefModal({
   function applyLibraryEntry(entry: LibraryRating) {
     setLabel(entry.label);
     setMax(entry.max);
-    setScale(entry.scale ?? ["", "", "", "", ""]);
+    setScale(padScale(entry.scale));
     setUseScale(Boolean(entry.scale?.length));
   }
 

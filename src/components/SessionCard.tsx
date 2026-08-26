@@ -154,12 +154,14 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
             (set) =>
               set.notes ||
               set.ratings.length > 0 ||
+              (set.watchItems ?? []).some((t) => t.trim()) ||
               session.media.some((m) => m.setNumber === set.setNumber),
           )
           .map((set) => {
             const setMedia = session.media
               .filter((m) => m.setNumber === set.setNumber)
               .sort((a, b) => a.order - b.order);
+            const setWatchItems = (set.watchItems ?? []).filter((t) => t.trim());
             const work =
               set.passes !== undefined
                 ? `${set.passes} passes`
@@ -198,6 +200,21 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
                   <p className="mb-2 text-sm leading-relaxed text-[var(--color-ink)]">
                     {set.notes}
                   </p>
+                )}
+                {/* Also listed under Notes on the left, gathered across the
+                    whole session; here they sit with the set and its clips,
+                    which is where you look while watching one back. */}
+                {setWatchItems.length > 0 && (
+                  <ul className="mb-2 flex flex-wrap gap-1.5">
+                    {setWatchItems.map((text, i) => (
+                      <li
+                        key={i}
+                        className="rounded-full bg-[var(--color-cream)] px-2.5 py-1 text-xs text-[var(--color-ink-soft)]"
+                      >
+                        {text}
+                      </li>
+                    ))}
+                  </ul>
                 )}
                 {setMedia.length > 0 && (
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

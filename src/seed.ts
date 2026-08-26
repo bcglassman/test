@@ -84,6 +84,71 @@ function buildSets(
   }));
 }
 
+/** The dog every session hangs off. Created once, then reused. */
+async function ensureDog(payload: Awaited<ReturnType<typeof getPayload>>) {
+  const existing = await payload.find({
+    collection: "dogs",
+    limit: 1,
+    sort: "createdAt",
+  });
+  if (existing.docs[0]) return existing.docs[0];
+  const created = await payload.create({
+    collection: "dogs",
+    data: { name: process.env.SEED_DOG_NAME || "Cookie" },
+  });
+  payload.logger.info(`Created dog "${created.name}".`);
+  return created;
+}
+
+/**
+ * Attaches sessions logged before dogs existed, and gives a role to
+ * accounts created before roles existed. The only such accounts belong to
+ * whoever set the site up, so they become admins rather than being
+ * demoted out of their own admin area; new accounts default to "owner".
+ */
+async function backfillDogAndRoles(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  dog: { id: number; name: string },
+) {
+  const orphaned = await payload.find({
+    collection: "sessions",
+    where: { dog: { exists: false } },
+    limit: 500,
+    depth: 0,
+  });
+  for (const session of orphaned.docs) {
+    await payload.update({
+      collection: "sessions",
+      id: session.id,
+      data: { dog: dog.id },
+    });
+  }
+  if (orphaned.docs.length) {
+    payload.logger.info(
+      `Attached ${orphaned.docs.length} session(s) to "${dog.name}".`,
+    );
+  }
+
+  const roleless = await payload.find({
+    collection: "users",
+    where: { role: { exists: false } },
+    limit: 200,
+    depth: 0,
+  });
+  for (const user of roleless.docs) {
+    await payload.update({
+      collection: "users",
+      id: user.id,
+      data: { role: "admin" },
+    });
+  }
+  if (roleless.docs.length) {
+    payload.logger.info(
+      `Set ${roleless.docs.length} pre-existing user(s) to the admin role.`,
+    );
+  }
+}
+
 async function main() {
   const payload = await getPayload({ config });
 
@@ -100,6 +165,12 @@ async function main() {
     );
   }
 
+  // Runs on every deploy, before the content skip below — an existing
+  // database has sessions but no dog, and that state has to heal itself
+  // rather than wait for someone to remember a one-off command.
+  const cookie = await ensureDog(payload);
+  await backfillDogAndRoles(payload, cookie);
+
   const existingExercises = await payload.find({
     collection: "exercises",
     limit: 1,
@@ -109,10 +180,10 @@ async function main() {
     process.exit(0);
   }
 
-  const cookie = await payload.create({
+  const seededDog = await payload.update({
     collection: "dogs",
+    id: cookie.id,
     data: {
-      name: "Cookie",
       breed: "Border Collie",
       dateOfBirth: "2021-04-12T00:00:00.000Z",
       sex: "female",
@@ -194,7 +265,7 @@ async function main() {
   await payload.create({
     collection: "sessions",
     data: {
-      dog: cookie.id,
+      dog: seededDog.id,
       exercise: sitToStand.id,
       date: "2026-08-24T10:35:00.000Z",
       restLabel: "~60 sec",
@@ -233,7 +304,7 @@ async function main() {
   await payload.create({
     collection: "sessions",
     data: {
-      dog: cookie.id,
+      dog: seededDog.id,
       exercise: cavaletti.id,
       date: "2026-08-23T18:20:00.000Z",
       restLabel: "~45 sec",
@@ -266,7 +337,7 @@ async function main() {
   await payload.create({
     collection: "sessions",
     data: {
-      dog: cookie.id,
+      dog: seededDog.id,
       exercise: treadmill.id,
       date: "2026-08-22T09:15:00.000Z",
       restLabel: "~10 min",
@@ -287,7 +358,7 @@ async function main() {
   await payload.create({
     collection: "sessions",
     data: {
-      dog: cookie.id,
+      dog: seededDog.id,
       exercise: sitToStand.id,
       date: "2026-08-18T15:40:00.000Z",
       restLabel: "~60 sec",

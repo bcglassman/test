@@ -80,6 +80,16 @@ export function dogToPayloadBody(dog: Omit<Dog, "id">) {
   };
 }
 
+/**
+ * Payload returns `[]` — not null — for a `hasMany` text field that was
+ * never filled in. An empty array is not a scale, and treating it as one
+ * left the rating editor rendering zero rows to type into and the session
+ * form showing no wording under the slider.
+ */
+function scaleOrUndefined(scale: string[] | null | undefined): string[] | undefined {
+  return scale && scale.length > 0 ? scale : undefined;
+}
+
 export function mapExercise(doc: PayloadExercise): Exercise {
   return {
     id: String(doc.id),
@@ -91,7 +101,7 @@ export function mapExercise(doc: PayloadExercise): Exercise {
       key: r.key,
       label: r.label,
       max: r.max,
-      scale: r.scale ?? undefined,
+      scale: scaleOrUndefined(r.scale),
     })),
   };
 }
@@ -187,7 +197,7 @@ export function mapSession(doc: PayloadSession): TrainingSession {
         key: d.key,
         label: d.label,
         max: d.max,
-        scale: d.scale ?? undefined,
+        scale: scaleOrUndefined(d.scale),
       }),
     ),
     restLabel: doc.restLabel ?? undefined,

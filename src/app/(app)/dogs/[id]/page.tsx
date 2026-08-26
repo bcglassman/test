@@ -32,7 +32,7 @@ function Panel({
 
 export default function DogProfilePage() {
   const params = useParams<{ id: string }>();
-  const { allSessions, dogs, allDogs, role, loading } = useSessions();
+  const { allSessions, dogs, allDogs, user, loading } = useSessions();
   const dog = allDogs.find((d) => d.id === params.id) ?? null;
 
   const sessions = useMemo(
@@ -107,7 +107,7 @@ export default function DogProfilePage() {
           >
             ← Feed
           </Link>
-          {role === "admin" && (
+          {user && (
             <Link
               href={`/manage/dogs/${dog.id}`}
               className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-ink)] hover:border-[var(--color-sage)]"

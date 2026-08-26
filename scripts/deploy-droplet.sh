@@ -77,10 +77,27 @@ echo "==> Installing dependencies"
 cd "$APP_DIR"
 npm install
 
-echo "==> Seeding the database (no-op if already seeded)"
+echo "==> Applying the schema and seeding (no-op if already seeded)"
 SEED_ADMIN_EMAIL="admin@cookietraining.app"
 SEED_ADMIN_PASSWORD=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c 20)
-SEED_ADMIN_EMAIL="$SEED_ADMIN_EMAIL" SEED_ADMIN_PASSWORD="$SEED_ADMIN_PASSWORD" npm run seed || true
+
+# Two passes, because these are two different jobs wearing one hat.
+#
+# Pass 1 applies the schema: Payload only pushes it when NODE_ENV is not
+# "production", so this run is what carries new columns and tables onto an
+# existing database. It can fail part-way — re-creating an index that is
+# already there is the known case — which is why it can't be the pass that
+# does the data work.
+#
+# Pass 2 runs with the push disabled, so it can't fail that way. Its job is
+# the data: the admin account, the dog every session hangs off, and the
+# backfill for sessions and accounts that predate them. Both passes are
+# idempotent, so running them every deploy is safe.
+if ! SEED_ADMIN_EMAIL="$SEED_ADMIN_EMAIL" SEED_ADMIN_PASSWORD="$SEED_ADMIN_PASSWORD" npm run seed; then
+  echo "   schema pass reported an error (see above) — continuing to the data pass"
+fi
+SEED_ADMIN_EMAIL="$SEED_ADMIN_EMAIL" SEED_ADMIN_PASSWORD="$SEED_ADMIN_PASSWORD" \
+  NODE_ENV=production npm run seed || true
 
 echo "==> Building for production"
 npm run build

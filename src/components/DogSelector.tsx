@@ -13,7 +13,12 @@ import { dogSubtitle } from "@/lib/dog-utils";
  * the Feed and Sessions and survives a reload.
  */
 export function DogSelector() {
-  const { dogs, selectedDog, selectDog, role } = useSessions();
+  // Managing dogs keys off being signed in, not off a role. Roles here are
+  // presentation only — they never gate what the API returns — so hanging
+  // data entry off one just risks locking out an account whose role isn't
+  // what you expect.
+  const { dogs, selectedDog, selectDog, user } = useSessions();
+  const canManage = Boolean(user);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +41,7 @@ export function DogSelector() {
   if (!selectedDog) {
     // No dogs on record. An admin gets the way in; anyone else gets nothing
     // rather than a control that leads nowhere.
-    if (role !== "admin") return null;
+    if (!canManage) return null;
     return (
       <Link
         href="/manage/dogs/new"
@@ -49,7 +54,7 @@ export function DogSelector() {
   }
 
   // One dog and no way to add another: a picker would be a dead control.
-  const pickable = dogs.length > 1 || role === "admin";
+  const pickable = dogs.length > 1 || canManage;
   if (!pickable) {
     return (
       <Link
@@ -124,7 +129,7 @@ export function DogSelector() {
             >
               View {selectedDog.name}&rsquo;s profile
             </Link>
-            {role === "admin" && (
+            {canManage && (
               <>
                 <Link
                   href={`/manage/dogs/${selectedDog.id}`}

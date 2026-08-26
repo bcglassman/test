@@ -502,7 +502,7 @@ export function SessionForm({
         )}
       </h1>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1.5 flex items-center justify-between text-sm font-medium text-[var(--color-ink-soft)]">
             Exercise
@@ -535,25 +535,13 @@ export function SessionForm({
             {exercise.category} · {exercise.focus}
           </div>
         </div>
-
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-            Date &amp; time
-          </span>
-          <input
-            type="datetime-local"
-            value={form.date}
-            onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
-          />
-        </label>
       </div>
 
       {/* Session Summary sits above the sets and sticks to the top: the
           aggregate is the thing you keep checking while editing sets below. */}
       <div className="sticky top-0 z-30 -mx-1 mt-6 px-1 pb-3 pt-1">
         <div className="rounded-2xl border-2 border-[var(--color-sage)]/35 bg-[var(--color-sage-tint)] p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="flex min-w-0 items-center gap-2">
               <PawIcon className="h-4 w-4 shrink-0 text-[var(--color-sage-dark)]" />
               <h2 className="font-serif text-lg text-[var(--color-ink)]">
@@ -563,6 +551,18 @@ export function SessionForm({
                 · applies across every set
               </span>
             </div>
+            {/* The session's timestamp lives here rather than in the fields
+                above: the feed is sorted by it, so it needs to stay on
+                screen while you scroll down through the sets. */}
+            <label className="ml-auto flex shrink-0 items-center gap-2 text-xs text-[var(--color-ink-soft)]">
+              <span className="hidden sm:inline">Date &amp; time</span>
+              <input
+                type="datetime-local"
+                value={form.date}
+                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-sage)]"
+              />
+            </label>
             <button
               type="button"
               onClick={() => {

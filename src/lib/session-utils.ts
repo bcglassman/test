@@ -21,9 +21,18 @@ export function resolveRatingDefs(
   session: Pick<TrainingSession, "ratingDefs">,
   exercise: Exercise,
 ): RatingDefinition[] {
-  return session.ratingDefs?.length
-    ? session.ratingDefs
-    : exercise.defaultRatings;
+  if (!session.ratingDefs?.length) return exercise.defaultRatings;
+  // A session's own definitions win, but one saved without wording borrows
+  // it from the exercise's template for the same dimension. Sessions logged
+  // before the rating editor could store a scale would otherwise show a
+  // bare number forever, even though the exercise says what it means.
+  return session.ratingDefs.map((def) => {
+    if (def.scale?.length) return def;
+    const fromExercise = exercise.defaultRatings.find((d) => d.key === def.key);
+    return fromExercise?.scale?.length
+      ? { ...def, scale: fromExercise.scale }
+      : def;
+  });
 }
 
 /**

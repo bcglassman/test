@@ -51,7 +51,10 @@ its form, and `/exercises` hides its "New exercise" button.
 **Roles are presentation, not enforcement.** Every collection still reads
 publicly and accepts writes from any signed-in account, exactly as before —
 so nothing behind a role is a secret, and nothing should be put there on the
-assumption that it is. Row-level scoping (owners and trainers seeing only
+assumption that it is. For the same reason the admin area itself asks only
+for a login, not for the admin role: a role check there would secure
+nothing while being able to lock a real user out of their own dogs. The
+role decides what the navigation offers, not what you may reach. Row-level scoping (owners and trainers seeing only
 their own dogs) is a separate change; the `owners` and `trainers` fields on
 a dog are recorded now so that change has the data it needs. The rules live
 in `src/lib/roles.ts`, and `resolveRole()` treats an account created before
@@ -175,14 +178,18 @@ are in `src/collections/`:
 - **Users** (`src/collections/Users.ts`) — Payload's auth collection, used
   for `/admin` and for gating writes from `/sessions`. Carries a display
   name and a `role` (see "Dogs and roles" above).
-- **Migrating existing data.** `dog` is a new optional column, so a schema
-  push leaves existing sessions intact — they simply have no dog. Run
-  `npx tsx --env-file=.env.local src/migrate-dogs.ts` after deploying to
-  create a dog if there isn't one, attach every dogless session to it, and
-  stamp the admin role onto accounts that predate roles. It's safe to
-  re-run. Until it runs, `sessionsForDog()` in `src/lib/dog-utils.ts`
-  shows dogless sessions against the first dog, so nothing disappears from
-  the feed in the meantime.
+- **Migrating existing data.** No separate command: `src/seed.ts` ensures a
+  dog exists, attaches every dogless session to it, and stamps the admin
+  role onto accounts that predate roles — all of it before the "skip if
+  already seeded" check, so it runs on every deploy and is idempotent. The
+  deploy script runs the seed twice on purpose (see
+  `scripts/deploy-droplet.sh`): the first pass carries the schema, since
+  Payload only pushes it when `NODE_ENV` isn't `production` and that push
+  can fail part-way re-creating an index that already exists; the second
+  runs with the push disabled so the data work can't be blocked by it.
+  Until a dog exists, `sessionsForDog()` in `src/lib/dog-utils.ts` shows
+  dogless sessions against the first dog, so nothing disappears from the
+  feed in the meantime.
 
 ## How the app talks to the CMS
 
