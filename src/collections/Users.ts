@@ -27,5 +27,25 @@ export const Users: CollectionConfig = {
     update: ({ req: { user } }) => Boolean(user),
     delete: ({ req: { user } }) => Boolean(user),
   },
-  fields: [],
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      admin: { description: "Display name; falls back to the email address." },
+    },
+    {
+      name: "role",
+      type: "select",
+      defaultValue: "owner",
+      options: [
+        { label: "Dog owner", value: "owner" },
+        { label: "Trainer", value: "trainer" },
+        { label: "Admin", value: "admin" },
+      ],
+      admin: {
+        description:
+          "Drives which navigation and screens this person sees. It does not yet restrict what the API returns — that is a separate access change.",
+      },
+    },
+  ],
 };

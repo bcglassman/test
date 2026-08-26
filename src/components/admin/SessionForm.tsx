@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type {
+  Dog,
   Exercise,
   MediaItem,
   RatingDefinition,
@@ -109,11 +110,14 @@ function blankFromExercise(exercise: Exercise): TrainingSession {
 
 export function SessionForm({
   exercises,
+  dog,
   session,
   onSave,
   onCancel,
 }: {
   exercises: Exercise[];
+  /** The dog this session is being logged against; stamped onto new ones. */
+  dog: Dog | null;
   session: TrainingSession | null;
   onSave: (session: TrainingSession) => Promise<void>;
   onCancel: () => void;
@@ -471,7 +475,13 @@ export function SessionForm({
     setError(null);
     setIsSaving(true);
     try {
-      await onSave({ ...form, date: new Date(form.date).toISOString() });
+      await onSave({
+        ...form,
+        // An existing session keeps whichever dog it was logged against;
+        // a new one belongs to whoever is selected in the header.
+        dogId: form.dogId ?? dog?.id,
+        date: new Date(form.date).toISOString(),
+      });
     } catch {
       setError("Couldn't save this session. Make sure you're logged in.");
     } finally {
@@ -485,6 +495,11 @@ export function SessionForm({
     <form onSubmit={handleSubmit} className="flex-1">
       <h1 className="mb-6 font-serif text-2xl text-[var(--color-ink)]">
         {session ? "Edit Training Session" : "Add Training Session"}
+        {dog && (
+          <span className="ml-2 text-base text-[var(--color-ink-soft)]">
+            for {dog.name}
+          </span>
+        )}
       </h1>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">

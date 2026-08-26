@@ -4,11 +4,15 @@
 // works with Exercise / TrainingSession / MediaItem.
 
 import type {
+  User as PayloadUser,
+  Dog as PayloadDog,
   Exercise as PayloadExercise,
   Media as PayloadMedia,
   Session as PayloadSession,
 } from "@/payload-types";
 import type {
+  AppUser,
+  Dog,
   Exercise,
   MediaItem,
   RatingDimension,
@@ -16,6 +20,65 @@ import type {
   SessionSet,
   TrainingSession,
 } from "./types";
+
+/** Relationship rows arrive as either a bare id or the joined document. */
+function relationIds(
+  rows: (number | { id: number })[] | null | undefined,
+): string[] | undefined {
+  if (!rows || rows.length === 0) return undefined;
+  return rows.map((r) => String(typeof r === "number" ? r : r.id));
+}
+
+export function mapUser(doc: PayloadUser): AppUser {
+  return {
+    id: String(doc.id),
+    email: doc.email,
+    name: doc.name ?? undefined,
+    role: doc.role ?? undefined,
+  };
+}
+
+export function mapDog(doc: PayloadDog): Dog {
+  const photo = doc.photo ?? undefined;
+  return {
+    id: String(doc.id),
+    name: doc.name,
+    photoUrl: photo && typeof photo !== "number" ? (photo.url ?? undefined) : undefined,
+    photoId: photo ? String(typeof photo === "number" ? photo : photo.id) : undefined,
+    breed: doc.breed ?? undefined,
+    dateOfBirth: doc.dateOfBirth ?? undefined,
+    sex: doc.sex ?? undefined,
+    weightKg: doc.weightKg ?? undefined,
+    trainingFocus: doc.trainingFocus ?? undefined,
+    trainingGoals: doc.trainingGoals ?? undefined,
+    movementObservations: doc.movementObservations ?? undefined,
+    restrictions: doc.restrictions ?? undefined,
+    notes: doc.notes ?? undefined,
+    ownerIds: relationIds(doc.owners),
+    trainerIds: relationIds(doc.trainers),
+    archived: doc.archived ?? false,
+  };
+}
+
+/** Request body for POST/PATCH /api/dogs. Omitted keys are left untouched. */
+export function dogToPayloadBody(dog: Omit<Dog, "id">) {
+  return {
+    name: dog.name,
+    photo: dog.photoId ? Number(dog.photoId) : null,
+    breed: dog.breed ?? null,
+    dateOfBirth: dog.dateOfBirth ?? null,
+    sex: dog.sex ?? null,
+    weightKg: dog.weightKg ?? null,
+    trainingFocus: dog.trainingFocus ?? null,
+    trainingGoals: dog.trainingGoals ?? [],
+    movementObservations: dog.movementObservations ?? null,
+    restrictions: dog.restrictions ?? [],
+    notes: dog.notes ?? null,
+    owners: (dog.ownerIds ?? []).map(Number),
+    trainers: (dog.trainerIds ?? []).map(Number),
+    archived: dog.archived ?? false,
+  };
+}
 
 export function mapExercise(doc: PayloadExercise): Exercise {
   return {
@@ -111,6 +174,9 @@ function mapSessionSet(
 export function mapSession(doc: PayloadSession): TrainingSession {
   return {
     id: String(doc.id),
+    dogId: doc.dog
+      ? String(typeof doc.dog === "number" ? doc.dog : doc.dog.id)
+      : undefined,
     exerciseId: String(
       typeof doc.exercise === "number" ? doc.exercise : doc.exercise.id,
     ),
@@ -145,6 +211,7 @@ export function mapSession(doc: PayloadSession): TrainingSession {
 /** Request body for POST/PATCH /api/sessions, built from our app's TrainingSession. */
 export function sessionToPayloadBody(session: TrainingSession) {
   return {
+    dog: session.dogId ? Number(session.dogId) : null,
     exercise: Number(session.exerciseId),
     date: session.date,
     sets: session.sets.map((s) => ({

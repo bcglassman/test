@@ -26,9 +26,39 @@ with `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`). Log in and change the
 password before using this for real. It's safe to re-run; it skips content
 seeding if any exercise already exists.
 
+## Dogs and roles
+
+Everything logged belongs to a **dog**. A dog selector sits in the header;
+the choice is remembered in `localStorage` and follows you between the Feed
+and Sessions, so the feed, its summary band, the sessions sidebar and any
+new session you log are all scoped to that one dog.
+
+Each account also carries a **role** — dog owner, trainer, or admin — which
+decides which navigation items and screens that person is shown:
+
+| | Feed | Sessions | Exercises | Admin (`/manage`) |
+|---|---|---|---|---|
+| Signed out | ✓ | | | |
+| Dog owner | ✓ | | | |
+| Trainer | ✓ | ✓ | ✓ | |
+| Admin | ✓ | ✓ | ✓ | ✓ |
+
+**Roles are presentation, not enforcement.** Every collection still reads
+publicly and accepts writes from any signed-in account, exactly as before —
+so nothing behind a role is a secret, and nothing should be put there on the
+assumption that it is. Row-level scoping (owners and trainers seeing only
+their own dogs) is a separate change; the `owners` and `trainers` fields on
+a dog are recorded now so that change has the data it needs. The rules live
+in `src/lib/roles.ts`, and `resolveRole()` treats an account created before
+roles existed as an admin, so whoever set the site up doesn't lose their own
+admin area.
+
 ## Screens
 
-- **`/` — Training Feed.** Public, no login needed. A chronological,
+- **`/` — Training Feed.** Public, no login needed. Opens with a summary
+  band for the selected dog — photo, age, weight, current training focus,
+  restrictions, and how the last few sessions have gone — above a
+  chronological,
   filterable feed of sessions. Each session shows its exercise, ratings, a
   trend vs. the previous session for that same exercise, and its media
   (video/photo) items. Video thumbnails play inline on click, with a small
@@ -67,18 +97,33 @@ seeding if any exercise already exists.
   typed by hand and given a 1–5 descriptive scale via its own sparkle
   button. Capped at 5 dimensions per exercise so the feed's ratings row
   stays readable. Saving returns you to `/exercises`.
-- **`/admin` — Payload's admin panel.** The full CMS: edit/delete any
-  Exercise, Session, or Media doc directly, manage users.
+- **`/dogs/[id]` — Dog profile.** The full record for one dog: details,
+  training goals, movement observations, restrictions, notes, a breakdown of
+  work by exercise, and recent sessions.
+- **`/manage` — Admin.** Admins only. Landing page linking to dogs,
+  exercises, sessions and (in the CMS) accounts. `/manage/dogs` lists every
+  dog including archived ones, with add, edit, archive/restore and delete;
+  `/manage/dogs/new` and `/manage/dogs/[id]` are the dog form — photo,
+  details, goals, restrictions, notes, and which accounts own or train the
+  dog. It lives at `/manage` rather than `/admin` because Payload's own
+  admin panel owns that path.
+- **`/admin` — Payload's admin panel.** The full CMS: edit/delete any Dog,
+  Exercise, Session, or Media doc directly, manage users and their roles.
 
 ## Data model
 
 App-level types are in `src/lib/types.ts`; the matching Payload collections
 are in `src/collections/`:
 
+- **Dog** (`src/collections/Dogs.ts`) — who is being trained: name, photo,
+  breed, date of birth, sex, weight, training focus and goals, standing
+  movement observations, restrictions, notes, and the accounts recorded as
+  its owners and trainers. Archived dogs stay in the record but drop out of
+  the selector.
 - **Exercise** (`src/collections/Exercises.ts`) — the reusable exercise
   definition (name, category, focus, default rating dimensions).
 - **Session** (`src/collections/Sessions.ts`) — one instance of performing
-  an exercise: a relationship to its exercise, a `sets` array, and the
+  an exercise: relationships to its dog and its exercise, a `sets` array, and the
   things that span sets (rest, environment, overall notes) plus its media.
   Anything that varies set to set — reps or passes, scores, notes — lives
   on the set, not the session (see `SessionSet` in `src/lib/types.ts`).
@@ -118,8 +163,17 @@ are in `src/collections/`:
   before `ratingDefs` existed, and `aggregateRatings()` averages each
   dimension across the sets; both live in `src/lib/session-utils.ts` and
   feed the summary bar, the feed cards and the "Overall" score.
-- **Users** (`src/collections/Users.ts`) — Payload's auth collection,
-  used for `/admin` and for gating writes from `/sessions`.
+- **Users** (`src/collections/Users.ts`) — Payload's auth collection, used
+  for `/admin` and for gating writes from `/sessions`. Carries a display
+  name and a `role` (see "Dogs and roles" above).
+- **Migrating existing data.** `dog` is a new optional column, so a schema
+  push leaves existing sessions intact — they simply have no dog. Run
+  `npx tsx --env-file=.env.local src/migrate-dogs.ts` after deploying to
+  create a dog if there isn't one, attach every dogless session to it, and
+  stamp the admin role onto accounts that predate roles. It's safe to
+  re-run. Until it runs, `sessionsForDog()` in `src/lib/dog-utils.ts`
+  shows dogless sessions against the first dog, so nothing disappears from
+  the feed in the meantime.
 
 ## How the app talks to the CMS
 

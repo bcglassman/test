@@ -16,6 +16,14 @@ export const Sessions: CollectionConfig = {
   },
   fields: [
     {
+      name: "dog",
+      type: "relationship",
+      relationTo: "dogs",
+      // Optional so sessions logged before dogs existed still load; the
+      // migration backfills them onto the default dog.
+      admin: { description: "Which dog performed this session." },
+    },
+    {
       name: "exercise",
       type: "relationship",
       relationTo: "exercises",

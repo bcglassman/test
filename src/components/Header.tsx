@@ -2,20 +2,15 @@
 
 import Link from "next/link";
 import { PawIcon } from "./icons";
+import { DogSelector } from "./DogSelector";
 import { useSessions } from "@/lib/sessions-context";
+import { type NavKey, ROLE_LABELS, displayName, navForRole } from "@/lib/roles";
 
-const NAV = [
-  { href: "/", label: "Feed", key: "feed" },
-  { href: "/sessions", label: "Sessions", key: "sessions" },
-  { href: "/exercises", label: "Exercises", key: "exercises" },
-] as const;
-
-export function Header({
-  active,
-}: {
-  active: "feed" | "sessions" | "exercises";
-}) {
-  const { user, authLoading, logout } = useSessions();
+export function Header({ active }: { active?: NavKey }) {
+  const { user, role, authLoading, logout } = useSessions();
+  // Navigation is presentation only — it reflects the signed-in role but
+  // isn't what keeps anyone out of anything. See lib/roles.ts.
+  const nav = navForRole(role);
 
   return (
     <header className="border-b border-[var(--color-border)] bg-[var(--color-cream)]">
@@ -35,8 +30,10 @@ export function Header({
         </Link>
 
         <div className="flex items-center gap-3 sm:gap-5">
+          <DogSelector />
+
           <nav className="flex items-center gap-1">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <Link
                 key={item.key}
                 href={item.href}
@@ -54,8 +51,11 @@ export function Header({
 
           {!authLoading && user ? (
             <div className="flex items-center gap-3">
-              <span className="hidden text-sm text-[var(--color-ink-soft)] sm:inline">
-                {user.email}
+              <span className="hidden text-right text-sm leading-tight text-[var(--color-ink-soft)] sm:block">
+                {displayName(user)}
+                {role && (
+                  <span className="block text-xs">{ROLE_LABELS[role]}</span>
+                )}
               </span>
               <button
                 type="button"

@@ -12,8 +12,17 @@ import type { TrainingSession } from "@/lib/types";
 import { formatSessionDate } from "@/lib/session-utils";
 
 export default function SessionsAdminPage() {
-  const { sessions, exercises, loading, saveSession, deleteSession, user, authLoading } =
-    useSessions();
+  const {
+    sessions,
+    exercises,
+    selectedDog,
+    dogs,
+    loading,
+    saveSession,
+    deleteSession,
+    user,
+    authLoading,
+  } = useSessions();
   const { showToast } = useToast();
   const confirm = useConfirm();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -28,6 +37,7 @@ export default function SessionsAdminPage() {
     mode === "edit" && selected
       ? {
           id: selected.id,
+          dogId: selected.dogId,
           exerciseId: selected.exerciseId,
           date: selected.date,
           sets: selected.sets,
@@ -102,6 +112,21 @@ export default function SessionsAdminPage() {
     );
   }
 
+  if (dogs.length === 0) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Header active="sessions" />
+        <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16 text-center text-sm text-[var(--color-ink-soft)]">
+          No dogs yet —{" "}
+          <Link href="/manage/dogs" className="underline">
+            add one
+          </Link>{" "}
+          before logging a session.
+        </main>
+      </div>
+    );
+  }
+
   if (exercises.length === 0) {
     return (
       <div className="flex min-h-screen flex-col">
@@ -138,6 +163,7 @@ export default function SessionsAdminPage() {
         <SessionForm
           key={mode === "edit" ? selectedId ?? "new" : `new-${newFormKey}`}
           exercises={exercises}
+          dog={selectedDog}
           session={activeSession}
           onSave={handleSave}
           onCancel={() => {

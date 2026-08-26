@@ -5,6 +5,49 @@
 
 export type MediaType = "video" | "image";
 
+/** Who a person is in the app. Drives navigation and which screens exist. */
+export type UserRole = "owner" | "trainer" | "admin";
+
+/** A person with an account, as listed in the admin area. */
+export interface AppUser {
+  id: string;
+  email: string;
+  name?: string;
+  /** Null on accounts created before roles existed — see roles.ts. */
+  role?: UserRole;
+}
+
+/**
+ * A dog being trained. Everything logged — sessions, media, ratings — hangs
+ * off one of these, and the app is scoped to whichever dog is selected.
+ */
+export interface Dog {
+  id: string;
+  name: string;
+  /** Profile photo URL, if one has been uploaded. */
+  photoUrl?: string;
+  /** CMS id of the photo asset, needed when saving. */
+  photoId?: string;
+  breed?: string;
+  /** ISO 8601 date (no time); drives the displayed age. */
+  dateOfBirth?: string;
+  sex?: "male" | "female";
+  weightKg?: number;
+  /** What the current programme is working on. */
+  trainingFocus?: string;
+  trainingGoals?: string[];
+  /** Standing observations about how this dog moves, carried across sessions. */
+  movementObservations?: string;
+  /** Things to avoid, e.g. "No jumping above hock height". */
+  restrictions?: string[];
+  notes?: string;
+  /** User ids. Recorded for a later access change; nothing enforces them yet. */
+  ownerIds?: string[];
+  trainerIds?: string[];
+  /** Archived dogs stay in the record but drop out of the dog selector. */
+  archived?: boolean;
+}
+
 export interface MediaItem {
   id: string;
   type: MediaType;
@@ -106,6 +149,11 @@ export type RatingDefinition = Omit<RatingDimension, "score">;
 
 export interface TrainingSession {
   id: string;
+  /**
+   * Which dog performed this session. Optional because sessions logged
+   * before dogs existed have none until the migration backfills them.
+   */
+  dogId?: string;
   exerciseId: string;
   /** ISO 8601 timestamp. */
   date: string;

@@ -62,6 +62,20 @@ export async function mediaFromFile(
   };
 }
 
+/**
+ * Uploads a still image to the media library and returns its id and URL.
+ * Used for a dog's profile photo, which isn't part of a session and so
+ * doesn't want any of the set/duration machinery above.
+ */
+export async function uploadImage(
+  file: File,
+): Promise<{ id: string; url: string }> {
+  const { doc } = await payloadUpload<{ doc: PayloadMedia }>("media", file, {
+    alt: file.name,
+  });
+  return { id: String(doc.id), url: doc.url ?? "" };
+}
+
 /** 12.4 -> "0:12", for the badge on a clip's thumbnail. */
 function formatClipDuration(seconds: number): string {
   const total = Math.round(seconds);

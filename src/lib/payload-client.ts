@@ -76,6 +76,12 @@ export async function payloadUpload<T>(
 export interface CurrentUser {
   id: string;
   email: string;
+  name?: string | null;
+  /**
+   * Null on accounts created before roles existed. `resolveRole()` in
+   * roles.ts decides what that means — don't read this field directly.
+   */
+  role?: "owner" | "trainer" | "admin" | null;
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {

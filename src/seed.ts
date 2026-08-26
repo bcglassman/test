@@ -91,7 +91,10 @@ async function main() {
   if (existingUsers.docs.length === 0) {
     const email = process.env.SEED_ADMIN_EMAIL || "admin@cookietraining.test";
     const password = process.env.SEED_ADMIN_PASSWORD || "cookie-admin-pass";
-    await payload.create({ collection: "users", data: { email, password } });
+    await payload.create({
+      collection: "users",
+      data: { email, password, name: "Site admin", role: "admin" },
+    });
     payload.logger.info(
       `Created admin user ${email} / ${password} — log in at /admin/login and change the password.`,
     );
@@ -105,6 +108,27 @@ async function main() {
     payload.logger.info("Exercises already exist — skipping content seed.");
     process.exit(0);
   }
+
+  const cookie = await payload.create({
+    collection: "dogs",
+    data: {
+      name: "Cookie",
+      breed: "Border Collie",
+      dateOfBirth: "2021-04-12T00:00:00.000Z",
+      sex: "female",
+      weightKg: 18.4,
+      trainingFocus: "Hind-limb strength and symmetry after CCL repair",
+      trainingGoals: [
+        "Even weight-bearing through both hind limbs",
+        "20 controlled sit-to-stands without form breakdown",
+        "Return to off-lead hill walks",
+      ],
+      movementObservations:
+        "Tends to shift weight to the right hind under fatigue; left knee drifts outward late in a set.",
+      restrictions: ["No jumping above hock height", "No hard surfaces for repeated impact work"],
+      notes: "Rehab programme started March 2026.",
+    },
+  });
 
   const sitToStand = await payload.create({
     collection: "exercises",
@@ -170,6 +194,7 @@ async function main() {
   await payload.create({
     collection: "sessions",
     data: {
+      dog: cookie.id,
       exercise: sitToStand.id,
       date: "2026-08-24T10:35:00.000Z",
       restLabel: "~60 sec",
@@ -208,6 +233,7 @@ async function main() {
   await payload.create({
     collection: "sessions",
     data: {
+      dog: cookie.id,
       exercise: cavaletti.id,
       date: "2026-08-23T18:20:00.000Z",
       restLabel: "~45 sec",
@@ -240,6 +266,7 @@ async function main() {
   await payload.create({
     collection: "sessions",
     data: {
+      dog: cookie.id,
       exercise: treadmill.id,
       date: "2026-08-22T09:15:00.000Z",
       restLabel: "~10 min",
@@ -260,6 +287,7 @@ async function main() {
   await payload.create({
     collection: "sessions",
     data: {
+      dog: cookie.id,
       exercise: sitToStand.id,
       date: "2026-08-18T15:40:00.000Z",
       restLabel: "~60 sec",
@@ -278,7 +306,7 @@ async function main() {
     },
   });
 
-  payload.logger.info("Seed complete: 3 exercises, 4 sessions, 9 media assets.");
+  payload.logger.info("Seed complete: 1 dog, 3 exercises, 4 sessions, 9 media assets.");
   process.exit(0);
 }
 

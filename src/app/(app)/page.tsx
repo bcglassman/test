@@ -4,13 +4,14 @@ import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { PillSelect } from "@/components/PillSelect";
 import { SessionCard } from "@/components/SessionCard";
+import { DogSummary } from "@/components/DogSummary";
 import { useSessions } from "@/lib/sessions-context";
 import type { ExerciseCategory } from "@/lib/types";
 
 type SortOrder = "newest" | "oldest";
 
 export default function HomePage() {
-  const { sessions, exercises, loading } = useSessions();
+  const { sessions, exercises, dogs, selectedDog, loading } = useSessions();
   const [category, setCategory] = useState<ExerciseCategory | "all">("all");
   const [exerciseId, setExerciseId] = useState<string>("all");
   const [sort, setSort] = useState<SortOrder>("newest");
@@ -51,6 +52,8 @@ export default function HomePage() {
     <div className="flex min-h-screen flex-col">
       <Header active="feed" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+        {selectedDog && <DogSummary dog={selectedDog} sessions={sessions} />}
+
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -95,9 +98,15 @@ export default function HomePage() {
           <p className="py-16 text-center text-sm text-[var(--color-ink-soft)]">
             Loading sessions…
           </p>
+        ) : dogs.length === 0 ? (
+          <p className="py-16 text-center text-sm text-[var(--color-ink-soft)]">
+            No dogs yet — add one in the Admin area to start logging sessions.
+          </p>
         ) : visible.length === 0 ? (
           <p className="py-16 text-center text-sm text-[var(--color-ink-soft)]">
-            No sessions match these filters yet.
+            {selectedDog
+              ? `No sessions for ${selectedDog.name} match these filters yet.`
+              : "No sessions match these filters yet."}
           </p>
         ) : (
           <div>

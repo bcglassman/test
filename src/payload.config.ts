@@ -8,6 +8,7 @@ import { Users } from "./collections/Users";
 import { Exercises } from "./collections/Exercises";
 import { Sessions } from "./collections/Sessions";
 import { Media } from "./collections/Media";
+import { Dogs } from "./collections/Dogs";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -38,7 +39,7 @@ export default buildConfig({
       titleSuffix: " — Cookie Training CMS",
     },
   },
-  collections: [Users, Exercises, Sessions, Media],
+  collections: [Users, Dogs, Exercises, Sessions, Media],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || "",
   typescript: {

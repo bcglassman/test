@@ -68,6 +68,7 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
+    dogs: Dog;
     exercises: Exercise;
     sessions: Session;
     media: Media;
@@ -79,6 +80,7 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    dogs: DogsSelect<false> | DogsSelect<true>;
     exercises: ExercisesSelect<false> | ExercisesSelect<true>;
     sessions: SessionsSelect<false> | SessionsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -127,6 +129,14 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
+  /**
+   * Display name; falls back to the email address.
+   */
+  name?: string | null;
+  /**
+   * Drives which navigation and screens this person sees. It does not yet restrict what the API returns — that is a separate access change.
+   */
+  role?: ('owner' | 'trainer' | 'admin') | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -145,6 +155,78 @@ export interface User {
     | null;
   password?: string | null;
   collection: 'users';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "dogs".
+ */
+export interface Dog {
+  id: number;
+  name: string;
+  /**
+   * Profile photo shown in the dog selector and header.
+   */
+  photo?: (number | null) | Media;
+  breed?: string | null;
+  /**
+   * Used to show the dog's age; no age is shown without it.
+   */
+  dateOfBirth?: string | null;
+  sex?: ('male' | 'female') | null;
+  /**
+   * Current weight in kilograms.
+   */
+  weightKg?: number | null;
+  /**
+   * What the current programme is working on, e.g. "Hind-limb strength after CCL repair".
+   */
+  trainingFocus?: string | null;
+  /**
+   * Short goal statements, one per entry.
+   */
+  trainingGoals?: string[] | null;
+  /**
+   * Standing observations about how this dog moves, carried across sessions.
+   */
+  movementObservations?: string | null;
+  /**
+   * Things to avoid, e.g. "No jumping above hock height". Shown on the dog profile.
+   */
+  restrictions?: string[] | null;
+  notes?: string | null;
+  /**
+   * Recorded for a later access change; not enforced yet.
+   */
+  owners?: (number | User)[] | null;
+  /**
+   * Recorded for a later access change; not enforced yet.
+   */
+  trainers?: (number | User)[] | null;
+  /**
+   * Archived dogs stay in the record but drop out of the dog selector.
+   */
+  archived?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  alt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -183,6 +265,10 @@ export interface Exercise {
  */
 export interface Session {
   id: number;
+  /**
+   * Which dog performed this session.
+   */
+  dog?: (number | null) | Dog;
   exercise: number | Exercise;
   date: string;
   /**
@@ -287,25 +373,6 @@ export interface Session {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: number;
-  alt?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -331,6 +398,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'users';
         value: number | User;
+      } | null)
+    | ({
+        relationTo: 'dogs';
+        value: number | Dog;
       } | null)
     | ({
         relationTo: 'exercises';
@@ -391,6 +462,8 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  name?: T;
+  role?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -407,6 +480,28 @@ export interface UsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "dogs_select".
+ */
+export interface DogsSelect<T extends boolean = true> {
+  name?: T;
+  photo?: T;
+  breed?: T;
+  dateOfBirth?: T;
+  sex?: T;
+  weightKg?: T;
+  trainingFocus?: T;
+  trainingGoals?: T;
+  movementObservations?: T;
+  restrictions?: T;
+  notes?: T;
+  owners?: T;
+  trainers?: T;
+  archived?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -434,6 +529,7 @@ export interface ExercisesSelect<T extends boolean = true> {
  * via the `definition` "sessions_select".
  */
 export interface SessionsSelect<T extends boolean = true> {
+  dog?: T;
   exercise?: T;
   date?: T;
   sets?:
