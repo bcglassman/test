@@ -103,14 +103,16 @@ are in `src/collections/`:
   clip or photo belongs to a specific set of the session and the feed can
   group them under it.
 - **Ratings are stored per set**: each entry in a session's `sets` array
-  holds `{ key, score }` pairs alongside that set's reps/passes and notes
-  (see `src/lib/types.ts`'s `SessionSet`). A dimension's label, max, and
-  optional 1–5 scale live only on the Exercise
-  (`defaultRatings`) — never copied onto the session — so ratings always
-  reflect the exercise's current definition. `aggregateRatings()` in
-  `src/lib/session-utils.ts` averages each dimension across a session's
-  sets and joins in that label/max/scale; this is what the feed and the
-  session-level "Overall" score use.
+  holds `{ key, score }` pairs alongside that set's reps/passes, notes and
+  watch items (see `src/lib/types.ts`'s `SessionSet`). Scores may land on
+  half marks. A dimension's label, max and optional 1–5 scale live in the
+  session's own `ratingDefs`, copied from the exercise's `defaultRatings`
+  when the session is created — the exercise is a template, so editing a
+  dimension in one session never disturbs the exercise or another session.
+  `resolveRatingDefs()` falls back to the exercise for sessions saved
+  before `ratingDefs` existed, and `aggregateRatings()` averages each
+  dimension across the sets; both live in `src/lib/session-utils.ts` and
+  feed the summary bar, the feed cards and the "Overall" score.
 - **Users** (`src/collections/Users.ts`) — Payload's auth collection,
   used for `/admin` and for gating writes from `/sessions`.
 
