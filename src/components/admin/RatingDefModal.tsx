@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { RatingDefinition } from "@/lib/types";
-import { RATING_LIBRARY } from "@/lib/rating-library";
+import type { LibraryRating } from "@/lib/rating-library";
+import { RatingLibraryPicker } from "./RatingLibraryPicker";
 import { CloseIcon } from "@/components/icons";
 
 function slugify(label: string): string {
@@ -47,9 +48,7 @@ export function RatingDefModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  function applyLibraryEntry(key: string) {
-    const entry = RATING_LIBRARY.find((r) => r.key === key);
-    if (!entry) return;
+  function applyLibraryEntry(entry: LibraryRating) {
     setLabel(entry.label);
     setMax(entry.max);
     setScale(entry.scale ?? ["", "", "", "", ""]);
@@ -102,28 +101,9 @@ export function RatingDefModal({
         </div>
 
         {!initial && (
-          <label className="mb-4 block">
-            <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-              Start from the library
-            </span>
-            <select
-              defaultValue=""
-              onChange={(e) => {
-                applyLibraryEntry(e.target.value);
-                e.target.value = "";
-              }}
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] px-3 py-2 text-sm outline-none focus:border-[var(--color-sage)]"
-            >
-              <option value="" disabled>
-                Pick a standard dimension…
-              </option>
-              {RATING_LIBRARY.map((entry) => (
-                <option key={entry.key} value={entry.key}>
-                  {entry.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="mb-4">
+            <RatingLibraryPicker onPick={applyLibraryEntry} />
+          </div>
         )}
 
         <div className="grid grid-cols-3 gap-4">

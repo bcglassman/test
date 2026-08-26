@@ -2,6 +2,7 @@ import type { Media as PayloadMedia } from "@/payload-types";
 import type { MediaItem, MediaType } from "./types";
 import { payloadUpload } from "./payload-client";
 import { compressVideo } from "./video-compress";
+import { readCaptureTimeFromFile } from "./capture-time";
 
 /**
  * Local-only id for a media row, used as a React key while editing. The CMS
@@ -34,7 +35,8 @@ export async function mediaFromFile(
   const type: MediaType = file.type.startsWith("video") ? "video" : "image";
   // Read these before compressing — re-encoding produces a brand-new File
   // whose lastModified is "now", which would lose the original capture time.
-  const captured = capturedAt ?? capturedAtFromFile(file);
+  const captured =
+    capturedAt ?? (await readCaptureTimeFromFile(file)) ?? capturedAtFromFile(file);
   const durationSeconds = await probeVideoDuration(file);
   const upload =
     type === "video" ? await compressVideo(file, {}, onCompressProgress) : file;
@@ -94,10 +96,10 @@ export function probeVideoDuration(file: File): Promise<number | undefined> {
 }
 
 /**
- * Best available capture time for a locally-picked file. Browsers don't
- * expose EXIF, so `lastModified` is what there is — accurate for files
- * straight off a camera or phone, less so for ones that have been copied
- * around. Undefined rather than a guess when it looks unusable.
+ * Fallback capture time, used only when the file carries no real metadata
+ * (see capture-time.ts). `lastModified` is the filesystem write time, so
+ * it's right for files straight off a camera and wrong for copies.
+ * Undefined rather than a guess when it looks unusable.
  */
 function capturedAtFromFile(file: File): string | undefined {
   if (!file.lastModified) return undefined;

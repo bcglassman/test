@@ -61,8 +61,9 @@ seeding if any exercise already exists.
   category, focus, description, and rating dimensions — all still editable
   before saving. Needs `ANTHROPIC_API_KEY` set (see `.env.example`); without
   it, the button shows an error and the field is still fillable by hand.
-  Each rating dimension can be picked from a small built-in library
-  (`src/lib/rating-library.ts`) for consistent wording across exercises, or
+  Each rating dimension can be picked from a catalogue of 70+ standard
+  ratings (`src/lib/rating-library.ts`), grouped by category and searchable,
+  for consistent wording across exercises, or
   typed by hand and given a 1–5 descriptive scale via its own sparkle
   button. Capped at 5 dimensions per exercise so the feed's ratings row
   stays readable. Saving returns you to `/exercises`.
@@ -88,9 +89,13 @@ are in `src/collections/`:
   over half. It's done client-side because this deploys to a small droplet
   where server-side transcoding would be slow and memory-hungry; every
   failure path falls back to uploading the original untouched. Each media
-  row also records a `capturedAt` — when the clip was actually shot, read
-  from the file's own metadata (`lastModified` locally; EXIF time or
-  `createdTime` for Drive imports) rather than when it was added.
+  row also records a `capturedAt` — when the clip was actually shot. That's
+  parsed out of the file's own bytes (`src/lib/capture-time.ts`): EXIF
+  `DateTimeOriginal` for JPEGs, the `mvhd` atom's creation time for
+  MP4/MOV. The File API only exposes `lastModified`, which is the
+  filesystem write time and simply wrong for anything copied or
+  downloaded — it's used only as a fallback when the file carries no
+  metadata of its own.
 - **Google Drive import** (`src/lib/google-drive.ts`) — optional. Uses the
   Google Picker with the `drive.file` scope, so the app only ever sees the
   files you explicitly pick, and that scope isn't "restricted" so it needs

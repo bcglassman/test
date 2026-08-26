@@ -20,6 +20,7 @@ import {
   UploadIcon,
 } from "@/components/icons";
 import { MediaEditorCard } from "./MediaEditorCard";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { RatingDefModal } from "./RatingDefModal";
 import { mediaFromFile } from "@/lib/media-utils";
 import {
@@ -138,6 +139,7 @@ export function SessionForm({
     def?: RatingDefinition;
   } | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(true);
+  const confirm = useConfirm();
   const [scrolled, setScrolled] = useState(false);
 
   // Expanded, the summary is tall enough to swallow a third of the screen.
@@ -183,7 +185,16 @@ export function SessionForm({
   }
 
   /** Removes a set, renumbers those after it, and moves its media rather than orphaning it. */
-  function removeSet(setNumber: number) {
+  async function removeSet(setNumber: number) {
+    const clips = form.media.filter((m) => m.setNumber === setNumber).length;
+    const ok = await confirm({
+      title: `Remove set ${setNumber}?`,
+      message: clips
+        ? `Its scores and notes are discarded. Its ${clips} media item(s) move to the previous set rather than being deleted.`
+        : "Its scores and notes are discarded.",
+      confirmLabel: "Remove set",
+    });
+    if (!ok) return;
     setForm((f) => {
       if (f.sets.length <= 1) return f;
       const sets = f.sets
@@ -228,7 +239,14 @@ export function SessionForm({
     setRatingModal(null);
   }
 
-  function removeRatingDef(key: string) {
+  async function removeRatingDef(key: string) {
+    const def = ratingDefs.find((d) => d.key === key);
+    const ok = await confirm({
+      title: `Remove the ${def?.label ?? "rating"} rating?`,
+      message: `It's dropped from every set in this session, along with the scores recorded against it. Other sessions and the exercise itself are unaffected.`,
+      confirmLabel: "Remove rating",
+    });
+    if (!ok) return;
     setForm((f) => {
       const nextDefs = (f.ratingDefs ?? []).filter((d) => d.key !== key);
       return {
@@ -362,7 +380,14 @@ export function SessionForm({
     }));
   }
 
-  function removeMedia(id: string) {
+  async function removeMedia(id: string) {
+    const target = form.media.find((m) => m.id === id);
+    const ok = await confirm({
+      title: "Remove this media?",
+      message: `${target?.label || "This item"} is removed from the session. The uploaded file itself stays in the media library.`,
+      confirmLabel: "Remove",
+    });
+    if (!ok) return;
     setForm((f) => ({ ...f, media: f.media.filter((m) => m.id !== id) }));
   }
 
@@ -576,24 +601,24 @@ export function SessionForm({
             return (
               <div
                 key={set.setNumber}
-                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+                className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]"
               >
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="font-serif text-lg text-[var(--color-ink)]">
-                    Set {set.setNumber}
-                  </h3>
+                {/* Dark band so each set reads as its own component. */}
+                <div className="flex items-center justify-between bg-[var(--color-sage-dark)] px-4 py-2.5 text-white">
+                  <h3 className="font-serif text-lg">Set {set.setNumber}</h3>
                   {form.sets.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeSet(set.setNumber)}
                       aria-label={`Remove set ${set.setNumber}`}
-                      className="flex items-center gap-1.5 text-xs font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-down)]"
+                      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-white/80 hover:bg-white/15 hover:text-white"
                     >
                       <TrashIcon className="h-3.5 w-3.5" />
                       Remove set
                     </button>
                   )}
                 </div>
+                <div className="p-4">
 
                 <div className="grid grid-cols-2 gap-4">
                   <label className="block">
@@ -805,6 +830,7 @@ export function SessionForm({
                       </button>
                     )}
                   </div>
+                </div>
                 </div>
               </div>
             );

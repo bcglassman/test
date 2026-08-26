@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { RatingDimension } from "@/lib/types";
-import { RATING_LIBRARY } from "@/lib/rating-library";
+import type { LibraryRating } from "@/lib/rating-library";
+import { RatingLibraryPicker } from "./RatingLibraryPicker";
 import { suggestRatingScale } from "@/lib/actions/suggest-rating-scale";
 import { SparkleIcon, TrashIcon } from "@/components/icons";
 
@@ -22,9 +23,13 @@ export function RatingDimensionEditor({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  function applyLibraryEntry(key: string) {
-    const entry = RATING_LIBRARY.find((r) => r.key === key);
-    if (entry) onChange(entry);
+  function applyLibraryEntry(entry: LibraryRating) {
+    onChange({
+      key: entry.key,
+      label: entry.label,
+      max: entry.max,
+      scale: entry.scale,
+    });
   }
 
   async function handleSuggestScale() {
@@ -56,24 +61,6 @@ export function RatingDimensionEditor({
           placeholder="Label, e.g. Form"
           className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] px-3 py-2 text-sm outline-none focus:border-[var(--color-sage)]"
         />
-        <select
-          defaultValue=""
-          onChange={(e) => {
-            applyLibraryEntry(e.target.value);
-            e.target.value = "";
-          }}
-          title="Use a standard dimension"
-          className="rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] px-2 py-2 text-sm outline-none focus:border-[var(--color-sage)]"
-        >
-          <option value="" disabled>
-            Library…
-          </option>
-          {RATING_LIBRARY.map((entry) => (
-            <option key={entry.key} value={entry.key}>
-              {entry.label}
-            </option>
-          ))}
-        </select>
         <button
           type="button"
           onClick={handleSuggestScale}
@@ -93,6 +80,14 @@ export function RatingDimensionEditor({
           <TrashIcon className="h-4 w-4" />
         </button>
       </div>
+      <div className="mt-2">
+        <RatingLibraryPicker
+          onPick={applyLibraryEntry}
+          label="Or start from the library"
+          placeholder="Search 70+ standard ratings…"
+        />
+      </div>
+
       {aiError && (
         <p className="mt-1.5 text-xs text-[var(--color-down)]">{aiError}</p>
       )}

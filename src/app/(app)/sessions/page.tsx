@@ -7,12 +7,15 @@ import { SessionsSidebar } from "@/components/admin/SessionsSidebar";
 import { SessionForm } from "@/components/admin/SessionForm";
 import { useSessions } from "@/lib/sessions-context";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { TrainingSession } from "@/lib/types";
+import { formatSessionDate } from "@/lib/session-utils";
 
 export default function SessionsAdminPage() {
   const { sessions, exercises, loading, saveSession, deleteSession, user, authLoading } =
     useSessions();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<"edit" | "new">("new");
   // Bumped on every request for a blank form, so the form remounts (and
@@ -44,6 +47,15 @@ export default function SessionsAdminPage() {
   }
 
   async function handleDelete(id: string) {
+    const target = sessions.find((s) => s.id === id);
+    const ok = await confirm({
+      title: "Delete this session?",
+      message: target
+        ? `${target.exercise.name} on ${formatSessionDate(target.date)}, with its ${target.sets.length} set(s) and ${target.media.length} media item(s). This can't be undone.`
+        : "This can't be undone.",
+      confirmLabel: "Delete session",
+    });
+    if (!ok) return;
     await deleteSession(id);
     if (selectedId === id) {
       setSelectedId(null);
