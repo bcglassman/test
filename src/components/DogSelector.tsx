@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDownIcon } from "./icons";
+import { ChevronDownIcon, PlusIcon } from "./icons";
 import { DogAvatar } from "./DogAvatar";
 import { useSessions } from "@/lib/sessions-context";
 import { dogSubtitle } from "@/lib/dog-utils";
@@ -33,7 +33,20 @@ export function DogSelector() {
     };
   }, [open]);
 
-  if (!selectedDog) return null;
+  if (!selectedDog) {
+    // No dogs on record. An admin gets the way in; anyone else gets nothing
+    // rather than a control that leads nowhere.
+    if (role !== "admin") return null;
+    return (
+      <Link
+        href="/manage/dogs/new"
+        className="flex items-center gap-1.5 rounded-full border border-dashed border-[var(--color-border)] px-3.5 py-1.5 text-sm font-medium text-[var(--color-ink-soft)] hover:border-[var(--color-sage)] hover:text-[var(--color-ink)]"
+      >
+        <PlusIcon className="h-3 w-3" />
+        Add a dog
+      </Link>
+    );
+  }
 
   // One dog and no way to add another: a picker would be a dead control.
   const pickable = dogs.length > 1 || role === "admin";
@@ -112,13 +125,29 @@ export function DogSelector() {
               View {selectedDog.name}&rsquo;s profile
             </Link>
             {role === "admin" && (
-              <Link
-                href="/manage/dogs"
-                onClick={() => setOpen(false)}
-                className="block px-3 py-2 text-sm text-[var(--color-ink-soft)] hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]"
-              >
-                Manage dogs
-              </Link>
+              <>
+                <Link
+                  href={`/manage/dogs/${selectedDog.id}`}
+                  onClick={() => setOpen(false)}
+                  className="block px-3 py-2 text-sm text-[var(--color-ink-soft)] hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]"
+                >
+                  Edit {selectedDog.name}
+                </Link>
+                <Link
+                  href="/manage/dogs/new"
+                  onClick={() => setOpen(false)}
+                  className="block px-3 py-2 text-sm text-[var(--color-ink-soft)] hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]"
+                >
+                  Add a dog
+                </Link>
+                <Link
+                  href="/manage/dogs"
+                  onClick={() => setOpen(false)}
+                  className="block px-3 py-2 text-sm text-[var(--color-ink-soft)] hover:bg-[var(--color-cream)] hover:text-[var(--color-ink)]"
+                >
+                  Manage dogs
+                </Link>
+              </>
             )}
           </div>
         </div>

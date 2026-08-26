@@ -1,4 +1,4 @@
-# Cookie Training
+# Canine Training
 
 A simple exercise journal for tracking training sessions: a public feed and
 an editing screen for logging new sessions, backed by [Payload
@@ -36,12 +36,17 @@ new session you log are all scoped to that one dog.
 Each account also carries a **role** — dog owner, trainer, or admin — which
 decides which navigation items and screens that person is shown:
 
-| | Feed | Sessions | Exercises | Admin (`/manage`) |
+| | Feed | Sessions | Exercise Library | Admin (`/manage`) |
 |---|---|---|---|---|
-| Signed out | ✓ | | | |
-| Dog owner | ✓ | | | |
+| Signed out | ✓ | ✓ (read) | ✓ (read) | |
+| Dog owner | ✓ | ✓ | ✓ | |
 | Trainer | ✓ | ✓ | ✓ | |
 | Admin | ✓ | ✓ | ✓ | ✓ |
+
+The record — the feed, the sessions behind it, and the exercise library —
+reads as one whole, so those three stay in the navigation for everyone.
+Writing still needs a login: `/sessions` shows a login prompt in place of
+its form, and `/exercises` hides its "New exercise" button.
 
 **Roles are presentation, not enforcement.** Every collection still reads
 publicly and accepts writes from any signed-in account, exactly as before —
@@ -84,8 +89,9 @@ admin area.
   a gate linking to `/admin/login` instead. The sidebar supports free-text
   search (across exercise name, notes, environment, set notes and media
   captions) plus an exercise filter, and saving shows a toast confirmation.
-- **`/exercises` — Exercises.** Requires login. Read-only list of every
-  exercise with its category, focus, and rating dimensions.
+- **`/exercises` — Exercise Library.** Public. Read-only list of every
+  exercise with its category, focus, and rating dimensions. The "New
+  exercise" button appears once you're logged in.
 - **`/exercises/new` — Add Exercise.** Requires login. Type just the
   exercise's name, then click the sparkle button to have Claude pre-fill
   category, focus, description, and rating dimensions — all still editable
@@ -102,11 +108,14 @@ admin area.
   work by exercise, and recent sessions.
 - **`/manage` — Admin.** Admins only. Landing page linking to dogs,
   exercises, sessions and (in the CMS) accounts. `/manage/dogs` lists every
-  dog including archived ones, with add, edit, archive/restore and delete;
+  dog including archived ones, with add, edit and archive/restore;
   `/manage/dogs/new` and `/manage/dogs/[id]` are the dog form — photo,
   details, goals, restrictions, notes, and which accounts own or train the
   dog. It lives at `/manage` rather than `/admin` because Payload's own
-  admin panel owns that path.
+  admin panel owns that path. Archiving is the app's way of retiring a dog —
+  it keeps the record and its sessions while dropping the dog from the
+  selector; outright deletion is left to the CMS admin panel, since it
+  detaches every session that referenced the dog.
 - **`/admin` — Payload's admin panel.** The full CMS: edit/delete any Dog,
   Exercise, Session, or Media doc directly, manage users and their roles.
 

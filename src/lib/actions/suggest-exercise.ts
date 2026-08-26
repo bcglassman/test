@@ -38,7 +38,7 @@ export async function suggestExerciseDetails(
     model: "claude-opus-5",
     max_tokens: 2048,
     system:
-      "You help fill in metadata for exercises in Cookie Training, a dog " +
+      "You help fill in metadata for exercises in Canine Training, a dog " +
       "training and physical-rehab exercise journal. Given just an " +
       "exercise's name, infer sensible values for a physical-therapy-style " +
       "logging form for that exercise.",

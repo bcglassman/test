@@ -21,7 +21,7 @@ export function Header({ active }: { active?: NavKey }) {
           </span>
           <span>
             <span className="block font-serif text-xl leading-tight text-[var(--color-ink)] sm:text-2xl">
-              Cookie Training
+              Canine Training
             </span>
             <span className="block text-sm text-[var(--color-ink-soft)]">
               A simple exercise journal.

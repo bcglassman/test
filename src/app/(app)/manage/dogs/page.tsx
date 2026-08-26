@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ManageGate } from "../ManageGate";
 import { DogAvatar } from "@/components/DogAvatar";
-import { PlusIcon, TrashIcon } from "@/components/icons";
+import { PencilIcon, PlusIcon } from "@/components/icons";
 import { useSessions } from "@/lib/sessions-context";
-import { useConfirm } from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
 import { dogSubtitle, sessionsForDog } from "@/lib/dog-utils";
 
@@ -19,27 +18,9 @@ export default function ManageDogsPage() {
 }
 
 function ManageDogsContent() {
-  const { allDogs, dogs, allSessions, deleteDog, saveDog } = useSessions();
-  const confirm = useConfirm();
+  const { allDogs, dogs, allSessions, saveDog } = useSessions();
   const { showToast } = useToast();
   const router = useRouter();
-
-  async function handleDelete(id: string) {
-    const dog = allDogs.find((d) => d.id === id);
-    if (!dog) return;
-    const count = sessionsForDog(allSessions, id, dogs[0]?.id).length;
-    const ok = await confirm({
-      title: `Delete ${dog.name}?`,
-      message:
-        count > 0
-          ? `${count} session(s) are logged against ${dog.name}. They stay in the database but will no longer belong to any dog. Archiving keeps everything intact instead.`
-          : "This can't be undone. Archiving keeps the record instead.",
-      confirmLabel: "Delete dog",
-    });
-    if (!ok) return;
-    await deleteDog(id);
-    showToast(`${dog.name} deleted`);
-  }
 
   async function toggleArchived(id: string) {
     const dog = allDogs.find((d) => d.id === id);
@@ -69,6 +50,16 @@ function ManageDogsContent() {
           New dog
         </button>
       </div>
+
+      <p className="mb-4 text-sm text-[var(--color-ink-soft)]">
+        Archiving keeps a dog&rsquo;s record and its sessions while taking them
+        out of the dog selector — it&rsquo;s what you want almost every time.
+        Deleting a dog outright is done in the{" "}
+        <Link href="/admin/collections/dogs" className="underline">
+          CMS admin panel
+        </Link>
+        .
+      </p>
 
       {allDogs.length === 0 ? (
         <p className="py-16 text-center text-sm text-[var(--color-ink-soft)]">
@@ -116,14 +107,14 @@ function ManageDogsContent() {
                   >
                     {dog.archived ? "Restore" : "Archive"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(dog.id)}
-                    aria-label={`Delete ${dog.name}`}
-                    className="rounded-full p-2 text-[var(--color-ink-soft)] hover:bg-[var(--color-cream)] hover:text-[var(--color-down)]"
+                  <Link
+                    href={`/manage/dogs/${dog.id}`}
+                    aria-label={`Edit ${dog.name}`}
+                    className="flex items-center gap-1.5 rounded-full border border-[var(--color-border)] px-3.5 py-1.5 text-sm text-[var(--color-ink)] hover:border-[var(--color-sage)]"
                   >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
+                    <PencilIcon className="h-3.5 w-3.5" />
+                    Edit
+                  </Link>
                 </div>
               </li>
             );

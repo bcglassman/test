@@ -112,21 +112,6 @@ export default function SessionsAdminPage() {
     );
   }
 
-  if (dogs.length === 0) {
-    return (
-      <div className="flex min-h-screen flex-col">
-        <Header active="sessions" />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16 text-center text-sm text-[var(--color-ink-soft)]">
-          No dogs yet —{" "}
-          <Link href="/manage/dogs" className="underline">
-            add one
-          </Link>{" "}
-          before logging a session.
-        </main>
-      </div>
-    );
-  }
-
   if (exercises.length === 0) {
     return (
       <div className="flex min-h-screen flex-col">
@@ -145,6 +130,19 @@ export default function SessionsAdminPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header active="sessions" />
+      {dogs.length === 0 && (
+        // Not a gate: existing sessions still need to be readable and
+        // editable. A session logged now simply has no dog attached, which
+        // is the same state every session was in before dogs existed.
+        <p className="mx-auto w-full max-w-6xl px-6 pt-6 text-sm text-[var(--color-ink-soft)]">
+          No dogs on record yet — sessions logged now won&rsquo;t be attached to
+          one.{" "}
+          <Link href="/manage/dogs/new" className="underline">
+            Add a dog
+          </Link>
+          .
+        </p>
+      )}
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-8 lg:flex-row">
         <SessionsSidebar
           sessions={sessions}

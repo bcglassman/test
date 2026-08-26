@@ -19,43 +19,28 @@ export default function ExercisesListPage() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="flex min-h-screen flex-col">
-        <Header active="exercises" />
-        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-          <h1 className="font-serif text-2xl text-[var(--color-ink)]">
-            Log in to view exercises
-          </h1>
-          <Link
-            href="/admin/login"
-            className="mt-6 rounded-full bg-[var(--color-sage)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-sage-dark)]"
-          >
-            Log in
-          </Link>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-screen flex-col">
       <Header active="exercises" />
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-serif text-2xl text-[var(--color-ink)]">Exercises</h1>
-          <Link
-            href="/exercises/new"
-            className="flex items-center gap-1.5 rounded-full bg-[var(--color-sage)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-sage-dark)]"
-          >
-            <PlusIcon className="h-3.5 w-3.5" />
-            New exercise
-          </Link>
+          <h1 className="font-serif text-2xl text-[var(--color-ink)]">
+            Exercise Library
+          </h1>
+          {user && (
+            <Link
+              href="/exercises/new"
+              className="flex items-center gap-1.5 rounded-full bg-[var(--color-sage)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-sage-dark)]"
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+              New exercise
+            </Link>
+          )}
         </div>
 
         {exercises.length === 0 ? (
           <p className="py-16 text-center text-sm text-[var(--color-ink-soft)]">
-            No exercises yet — add one to get started.
+            No exercises yet.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">

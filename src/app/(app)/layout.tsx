@@ -17,7 +17,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Cookie Training",
+  title: "Canine Training",
   description: "A simple exercise journal.",
 };
 

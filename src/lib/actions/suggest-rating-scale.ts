@@ -26,7 +26,7 @@ export async function suggestRatingScale(
     max_tokens: 1024,
     system:
       "You write 5-level rating rubrics for a dog training and physical-" +
-      "rehab exercise journal called Cookie Training. Given an exercise " +
+      "rehab exercise journal called Canine Training. Given an exercise " +
       "and a rating dimension name, write what a score of 1 through 5 " +
       "means for that dimension on that exercise, worst to best.",
     messages: [

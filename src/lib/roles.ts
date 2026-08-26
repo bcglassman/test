@@ -33,24 +33,30 @@ interface NavItem {
   key: NavKey;
   href: string;
   label: string;
-  /** Which roles see this item. A signed-out visitor sees only the feed. */
+  /** Which signed-in roles see this item. */
   roles: UserRole[];
+  /** Whether a signed-out visitor sees it too. */
+  signedOut: boolean;
 }
 
 const ALL: UserRole[] = ["owner", "trainer", "admin"];
 
 export const NAV_ITEMS: NavItem[] = [
-  { key: "feed", href: "/", label: "Feed", roles: ALL },
-  { key: "sessions", href: "/sessions", label: "Sessions", roles: ["trainer", "admin"] },
-  { key: "exercises", href: "/exercises", label: "Exercises", roles: ["trainer", "admin"] },
+  { key: "feed", href: "/", label: "Feed", roles: ALL, signedOut: true },
+  // The record — the feed, the sessions behind it and the exercise library
+  // — is one readable whole, so these stay in the navigation for everyone.
+  // Writing still needs a login; /sessions shows a login prompt in place of
+  // its form.
+  { key: "sessions", href: "/sessions", label: "Sessions", roles: ALL, signedOut: true },
+  { key: "exercises", href: "/exercises", label: "Exercise Library", roles: ALL, signedOut: true },
   // Payload owns /admin, so the app's own admin area lives at /manage and
   // just calls itself "Admin" in the navigation.
-  { key: "manage", href: "/manage", label: "Admin", roles: ["admin"] },
+  { key: "manage", href: "/manage", label: "Admin", roles: ["admin"], signedOut: false },
 ];
 
-/** Navigation for a role; signed-out visitors get the feed only. */
+/** Navigation for a role, or for a signed-out visitor when role is null. */
 export function navForRole(role: UserRole | null): NavItem[] {
-  if (!role) return NAV_ITEMS.filter((item) => item.key === "feed");
+  if (!role) return NAV_ITEMS.filter((item) => item.signedOut);
   return NAV_ITEMS.filter((item) => item.roles.includes(role));
 }
 

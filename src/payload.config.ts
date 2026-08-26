@@ -36,7 +36,7 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     meta: {
-      titleSuffix: " — Cookie Training CMS",
+      titleSuffix: " — Canine Training CMS",
     },
   },
   collections: [Users, Dogs, Exercises, Sessions, Media],

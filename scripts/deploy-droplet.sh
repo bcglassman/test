@@ -88,7 +88,7 @@ npm run build
 echo "==> Installing systemd service"
 cat > /etc/systemd/system/cookie-training.service <<EOF
 [Unit]
-Description=Cookie Training (Next.js + Payload CMS)
+Description=Canine Training (Next.js + Payload CMS)
 After=network.target
 
 [Service]
