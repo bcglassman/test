@@ -169,13 +169,22 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
                   ? `${set.reps} reps`
                   : undefined;
             return (
-              <div key={set.setNumber}>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
-                  Set {set.setNumber}
-                  {work && ` · ${work}`}
-                </p>
+              // Each set is its own card with a banded header, matching the
+              // set containers in the session form — with several sets, plus
+              // their clips, a run of headings alone didn't separate them.
+              <div
+                key={set.setNumber}
+                className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]"
+              >
+                <div className="flex items-baseline justify-between gap-3 bg-[var(--color-sage-dark)] px-4 py-2.5 text-white">
+                  <h3 className="font-serif text-base leading-none">
+                    Set {set.setNumber}
+                  </h3>
+                  {work && <span className="text-xs text-white/75">{work}</span>}
+                </div>
+                <div className="flex flex-col gap-2.5 p-4">
                 {ratingDefs.length > 0 && (
-                  <dl className="mb-2 flex flex-wrap gap-x-4 gap-y-1">
+                  <dl className="flex flex-wrap gap-x-4 gap-y-1">
                     {ratingDefs.map((def) => {
                       const score = set.ratings.find((r) => r.key === def.key)?.score;
                       if (score === undefined) return null;
@@ -197,7 +206,7 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
                   </dl>
                 )}
                 {set.notes && (
-                  <p className="mb-2 text-sm leading-relaxed text-[var(--color-ink)]">
+                  <p className="text-sm leading-relaxed text-[var(--color-ink)]">
                     {set.notes}
                   </p>
                 )}
@@ -205,7 +214,7 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
                     whole session; here they sit with the set and its clips,
                     which is where you look while watching one back. */}
                 {setWatchItems.length > 0 && (
-                  <ul className="mb-2 flex flex-wrap gap-1.5">
+                  <ul className="flex flex-wrap gap-1.5">
                     {setWatchItems.map((text, i) => (
                       <li
                         key={i}
@@ -223,6 +232,7 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
                     ))}
                   </div>
                 )}
+                </div>
               </div>
             );
           })}

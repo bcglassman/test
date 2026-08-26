@@ -903,7 +903,7 @@ export function SessionForm({
                             onChange={(e) =>
                               updateWatchItem(set.setNumber, i, e.target.value)
                             }
-                            maxLength={80}
+                            maxLength={140}
                             placeholder="e.g. left knee flaring"
                             className="flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-cream)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-sage)]"
                           />
