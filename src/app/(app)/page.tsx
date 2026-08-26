@@ -98,15 +98,17 @@ export default function HomePage() {
           <p className="py-16 text-center text-sm text-[var(--color-ink-soft)]">
             Loading sessions…
           </p>
-        ) : dogs.length === 0 ? (
-          <p className="py-16 text-center text-sm text-[var(--color-ink-soft)]">
-            No dogs yet — add one in the Admin area to start logging sessions.
-          </p>
         ) : visible.length === 0 ? (
+          // Sessions come first: with no dogs on record yet the feed still
+          // shows everything that has been logged, unscoped. Hiding real
+          // sessions behind a "no dogs" notice would make the public record
+          // look empty on the day dogs ship, before the migration runs.
           <p className="py-16 text-center text-sm text-[var(--color-ink-soft)]">
-            {selectedDog
-              ? `No sessions for ${selectedDog.name} match these filters yet.`
-              : "No sessions match these filters yet."}
+            {dogs.length === 0
+              ? "No dogs yet — add one in the Admin area to start logging sessions."
+              : selectedDog
+                ? `No sessions for ${selectedDog.name} match these filters yet.`
+                : "No sessions match these filters yet."}
           </p>
         ) : (
           <div>
