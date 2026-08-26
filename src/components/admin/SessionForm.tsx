@@ -1,12 +1,34 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import type { Exercise, MediaItem, SessionSet, TrainingSession } from "@/lib/types";
-import { CategoryIcon, DriveIcon, PawIcon, PlusIcon, TrashIcon, UploadIcon } from "@/components/icons";
+import type {
+  Exercise,
+  MediaItem,
+  RatingDefinition,
+  SessionSet,
+  TrainingSession,
+} from "@/lib/types";
+import {
+  CategoryIcon,
+  CloseIcon,
+  DriveIcon,
+  PawIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+  UploadIcon,
+} from "@/components/icons";
 import { MediaEditorCard } from "./MediaEditorCard";
+import { RatingDefModal } from "./RatingDefModal";
 import { mediaFromFile } from "@/lib/media-utils";
-import { aggregateRatings } from "@/lib/session-utils";
+import {
+  aggregateRatings,
+  describeScore,
+  formatDuration,
+  resolveRatingDefs,
+  totalActiveMovementSeconds,
+} from "@/lib/session-utils";
 import {
   downloadDriveFile,
   fetchCapturedAt,
@@ -24,19 +46,19 @@ function toDateTimeLocal(iso: string) {
   )}:${pad(d.getMinutes())}`;
 }
 
-/** A set's ratings, seeded from the exercise's dimensions, keeping any score that still applies. */
-function ratingsForExercise(
-  exercise: Exercise,
+/** A set's ratings for the given dimensions, keeping any score that still applies. */
+function ratingsForDefs(
+  defs: RatingDefinition[],
   existing?: SessionSet,
 ): SessionSet["ratings"] {
-  return exercise.defaultRatings.map((def) => {
+  return defs.map((def) => {
     const priorScore = existing?.ratings.find((r) => r.key === def.key)?.score;
     return { key: def.key, score: priorScore ?? Math.round(def.max / 2) };
   });
 }
 
 function blankSet(
-  exercise: Exercise,
+  defs: RatingDefinition[],
   setNumber: number,
   template?: SessionSet,
 ): SessionSet {
@@ -46,26 +68,28 @@ function blankSet(
     reps: template?.reps ?? 6,
     passes: template?.passes,
     notes: "",
-    ratings: ratingsForExercise(exercise),
+    watchItems: [],
+    ratings: ratingsForDefs(defs),
   };
 }
 
-/** Re-seeds every set's ratings for a different exercise, keeping the rest. */
-function setsForExercise(exercise: Exercise, existing: SessionSet[]): SessionSet[] {
-  return existing.map((set) => ({
-    ...set,
-    ratings: ratingsForExercise(exercise, set),
-  }));
+/** Re-seeds every set's ratings against a new set of dimensions, keeping the rest. */
+function setsForDefs(defs: RatingDefinition[], existing: SessionSet[]): SessionSet[] {
+  return existing.map((set) => ({ ...set, ratings: ratingsForDefs(defs, set) }));
 }
 
 function blankFromExercise(exercise: Exercise): TrainingSession {
+  // The exercise's dimensions are a starting template; the session owns its
+  // own copy from here on.
+  const defs = exercise.defaultRatings;
   return {
     // Empty id marks a session that hasn't been created in the CMS yet;
     // saveSession() uses this to decide POST (create) vs PATCH (update).
     id: "",
     exerciseId: exercise.id,
     date: toDateTimeLocal(new Date().toISOString()),
-    sets: [1, 2, 3].map((n) => blankSet(exercise, n)),
+    sets: [1, 2, 3].map((n) => blankSet(defs, n)),
+    ratingDefs: defs,
     restLabel: "~60 sec",
     notes: "",
     media: [],
@@ -86,10 +110,11 @@ export function SessionForm({
   const [form, setForm] = useState<TrainingSession>(() => {
     if (!session) return blankFromExercise(exercises[0]);
     const ex = exercises.find((e) => e.id === session.exerciseId) ?? exercises[0];
+    const defs = resolveRatingDefs(session, ex);
     const sets = session.sets.length
-      ? setsForExercise(ex, session.sets)
-      : [blankSet(ex, 1)];
-    return { ...session, date: toDateTimeLocal(session.date), sets };
+      ? setsForDefs(defs, session.sets)
+      : [blankSet(defs, 1)];
+    return { ...session, date: toDateTimeLocal(session.date), sets, ratingDefs: defs };
   });
   const [isUploading, setIsUploading] = useState(false);
   const [compressPercent, setCompressPercent] = useState<number | null>(null);
@@ -103,6 +128,28 @@ export function SessionForm({
   const pendingSetRef = useRef<number>(1);
 
   const exercise = exercises.find((e) => e.id === form.exerciseId) ?? exercises[0];
+  const ratingDefs = useMemo(
+    () => resolveRatingDefs(form, exercise),
+    [form, exercise],
+  );
+  const totalActiveSeconds = totalActiveMovementSeconds(form);
+  // null = closed; { def: undefined } = adding; { def } = editing that one.
+  const [ratingModal, setRatingModal] = useState<{
+    def?: RatingDefinition;
+  } | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(true);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Expanded, the summary is tall enough to swallow a third of the screen.
+  // Once you scroll into the sets it drops to the compact aggregate row, so
+  // it stays a reference rather than an obstacle.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 120);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  const summaryExpanded = summaryOpen && !scrolled;
 
   function updateSetRating(setNumber: number, key: string, score: number) {
     setForm((f) => ({
@@ -127,7 +174,10 @@ export function SessionForm({
       const next = f.sets.length + 1;
       return {
         ...f,
-        sets: [...f.sets, blankSet(exercise, next, f.sets[f.sets.length - 1])],
+        sets: [
+          ...f.sets,
+          blankSet(ratingDefs, next, f.sets[f.sets.length - 1]),
+        ],
       };
     });
   }
@@ -154,10 +204,80 @@ export function SessionForm({
     });
   }
 
+  /** Switching exercise adopts that exercise's dimensions as the new template. */
   function handleExerciseChange(exerciseId: string) {
     const next = exercises.find((e) => e.id === exerciseId);
     if (!next) return;
-    setForm((f) => ({ ...f, exerciseId, sets: setsForExercise(next, f.sets) }));
+    setForm((f) => ({
+      ...f,
+      exerciseId,
+      ratingDefs: next.defaultRatings,
+      sets: setsForDefs(next.defaultRatings, f.sets),
+    }));
+  }
+
+  function saveRatingDef(def: RatingDefinition) {
+    setForm((f) => {
+      const defs = f.ratingDefs ?? [];
+      const exists = defs.some((d) => d.key === def.key);
+      const nextDefs = exists
+        ? defs.map((d) => (d.key === def.key ? def : d))
+        : [...defs, def];
+      return { ...f, ratingDefs: nextDefs, sets: setsForDefs(nextDefs, f.sets) };
+    });
+    setRatingModal(null);
+  }
+
+  function removeRatingDef(key: string) {
+    setForm((f) => {
+      const nextDefs = (f.ratingDefs ?? []).filter((d) => d.key !== key);
+      return {
+        ...f,
+        ratingDefs: nextDefs,
+        sets: f.sets.map((s) => ({
+          ...s,
+          ratings: s.ratings.filter((r) => r.key !== key),
+        })),
+      };
+    });
+  }
+
+  function updateWatchItem(setNumber: number, index: number, value: string) {
+    setForm((f) => ({
+      ...f,
+      sets: f.sets.map((s) =>
+        s.setNumber === setNumber
+          ? {
+              ...s,
+              watchItems: (s.watchItems ?? []).map((w, i) =>
+                i === index ? value : w,
+              ),
+            }
+          : s,
+      ),
+    }));
+  }
+
+  function addWatchItem(setNumber: number) {
+    setForm((f) => ({
+      ...f,
+      sets: f.sets.map((s) =>
+        s.setNumber === setNumber
+          ? { ...s, watchItems: [...(s.watchItems ?? []), ""] }
+          : s,
+      ),
+    }));
+  }
+
+  function removeWatchItem(setNumber: number, index: number) {
+    setForm((f) => ({
+      ...f,
+      sets: f.sets.map((s) =>
+        s.setNumber === setNumber
+          ? { ...s, watchItems: (s.watchItems ?? []).filter((_, i) => i !== index) }
+          : s,
+      ),
+    }));
   }
 
   async function addFilesToSet(
@@ -339,6 +459,107 @@ export function SessionForm({
         </label>
       </div>
 
+      {/* Session Summary sits above the sets and sticks to the top: the
+          aggregate is the thing you keep checking while editing sets below. */}
+      <div className="sticky top-0 z-30 -mx-1 mt-6 px-1 pb-3 pt-1">
+        <div className="rounded-2xl border-2 border-[var(--color-sage)]/35 bg-[var(--color-sage-tint)] p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <PawIcon className="h-4 w-4 shrink-0 text-[var(--color-sage-dark)]" />
+              <h2 className="font-serif text-lg text-[var(--color-ink)]">
+                Session Summary
+              </h2>
+              <span className="hidden text-xs text-[var(--color-ink-soft)] sm:inline">
+                · applies across every set
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (!summaryExpanded) window.scrollTo({ top: 0, behavior: "smooth" });
+                setSummaryOpen(!summaryExpanded);
+              }}
+              aria-expanded={summaryExpanded}
+              className="shrink-0 rounded-full border border-[var(--color-sage)]/40 px-3 py-1 text-xs font-medium text-[var(--color-sage-dark)] hover:bg-white/60"
+            >
+              {summaryExpanded ? "Collapse" : "Expand"}
+            </button>
+          </div>
+
+          {/* Always visible, collapsed or not — the at-a-glance row. */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+            {aggregateRatings(form, exercise).map((r) => (
+              <span key={r.key}>
+                <span className="text-[var(--color-ink-soft)]">{r.label}</span>{" "}
+                <span className="font-semibold text-[var(--color-ink)]">
+                  {r.score}
+                </span>
+              </span>
+            ))}
+            <span className="ml-auto rounded-full bg-white/70 px-3 py-1 text-xs">
+              <span className="text-[var(--color-ink-soft)]">
+                Total active movement
+              </span>{" "}
+              <span className="font-semibold text-[var(--color-ink)]">
+                {formatDuration(totalActiveSeconds)}
+              </span>
+            </span>
+          </div>
+
+          {summaryExpanded && (
+            <div className="mt-4 border-t border-[var(--color-sage)]/25 pt-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+                    Rest between sets
+                  </span>
+                  <select
+                    value={form.restLabel ?? "None"}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, restLabel: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
+                  >
+                    {REST_PRESETS.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+                    Environment
+                  </span>
+                  <input
+                    value={form.environment ?? ""}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, environment: e.target.value }))
+                    }
+                    placeholder="e.g. Outside — warm, or Air-conditioned gym"
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
+                  />
+                </label>
+              </div>
+
+              <label className="mt-4 block">
+                <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+                  Session notes
+                </span>
+                <textarea
+                  rows={3}
+                  value={form.notes ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="How the session went overall"
+                  className="w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
+                />
+              </label>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="mt-8">
         <div className="mb-3 flex items-baseline justify-between">
           <h2 className="text-sm font-medium text-[var(--color-ink-soft)]">Sets</h2>
@@ -408,41 +629,72 @@ export function SessionForm({
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {exercise.defaultRatings.map((def) => {
+                <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {ratingDefs.map((def) => {
                     const score =
                       set.ratings.find((r) => r.key === def.key)?.score ??
                       Math.round(def.max / 2);
                     const min = def.scale ? 1 : 0;
+                    const description = describeScore(def, score);
                     return (
                       <div
                         key={def.key}
-                        className="rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] p-3"
+                        className="group rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] p-3"
                       >
-                        <div className="flex items-baseline justify-between">
-                          <span className="text-sm text-[var(--color-ink-soft)]">{def.label}</span>
-                          <span className="text-lg font-semibold text-[var(--color-ink)]">
-                            {score}
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-sm text-[var(--color-ink-soft)]">
+                            {def.label}
+                          </span>
+                          <span className="flex items-center gap-2">
+                            <span className="text-lg font-semibold text-[var(--color-ink)]">
+                              {score}
+                              <span className="text-sm font-normal text-[var(--color-ink-soft)]">
+                                /{def.max}
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setRatingModal({ def })}
+                              aria-label={`Edit ${def.label} rating`}
+                              className="rounded p-1 text-[var(--color-ink-soft)] opacity-0 transition-opacity hover:text-[var(--color-ink)] focus:opacity-100 group-hover:opacity-100"
+                            >
+                              <PencilIcon className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeRatingDef(def.key)}
+                              aria-label={`Remove ${def.label} rating`}
+                              className="rounded p-1 text-[var(--color-ink-soft)] opacity-0 transition-opacity hover:text-[var(--color-down)] focus:opacity-100 group-hover:opacity-100"
+                            >
+                              <CloseIcon className="h-3.5 w-3.5" />
+                            </button>
                           </span>
                         </div>
-                        {def.scale && (
-                          <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
-                            {def.scale[score - 1]}
-                          </p>
-                        )}
                         <input
                           type="range"
                           min={min}
                           max={def.max}
+                          step={0.5}
                           value={score}
                           onChange={(e) =>
                             updateSetRating(set.setNumber, def.key, Number(e.target.value))
                           }
                           className="mt-2 w-full accent-[var(--color-sage)]"
                         />
+                        <p className="mt-1 min-h-[2rem] text-xs leading-snug text-[var(--color-ink-soft)]">
+                          {description}
+                        </p>
                       </div>
                     );
                   })}
+                  <button
+                    type="button"
+                    onClick={() => setRatingModal({})}
+                    className="flex min-h-[5rem] items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[var(--color-border)] p-3 text-sm font-medium text-[var(--color-ink-soft)] hover:border-[var(--color-sage)] hover:text-[var(--color-sage-dark)]"
+                  >
+                    <PlusIcon className="h-3.5 w-3.5" />
+                    Add rating
+                  </button>
                 </div>
 
                 <label className="mt-4 block">
@@ -459,10 +711,55 @@ export function SessionForm({
                 </label>
 
                 <div className="mt-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-medium text-[var(--color-ink-soft)]">
+                      Watch items
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => addWatchItem(set.setNumber)}
+                      className="flex items-center gap-1 text-xs font-medium text-[var(--color-sage-dark)] hover:underline"
+                    >
+                      <PlusIcon className="h-3 w-3" />
+                      Add
+                    </button>
+                  </div>
+                  {(set.watchItems ?? []).length === 0 ? (
+                    <p className="text-xs text-[var(--color-ink-soft)]">
+                      Nothing flagged for this set.
+                    </p>
+                  ) : (
+                    <ul className="flex flex-col gap-1.5">
+                      {(set.watchItems ?? []).map((item, i) => (
+                        <li key={i} className="flex items-center gap-2">
+                          <input
+                            value={item}
+                            onChange={(e) =>
+                              updateWatchItem(set.setNumber, i, e.target.value)
+                            }
+                            maxLength={80}
+                            placeholder="e.g. left knee flaring"
+                            className="flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-cream)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-sage)]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeWatchItem(set.setNumber, i)}
+                            aria-label={`Remove watch item ${i + 1}`}
+                            className="rounded-md p-1.5 text-[var(--color-ink-soft)] hover:text-[var(--color-down)]"
+                          >
+                            <CloseIcon className="h-3.5 w-3.5" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="mt-4">
                   <span className="mb-2 block text-xs font-medium text-[var(--color-ink-soft)]">
                     Media
                   </span>
-                  <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
+                  <div className="flex flex-col gap-4">
                     {setMedia.map((m, i) => (
                       <MediaEditorCard
                         key={m.id}
@@ -538,76 +835,15 @@ export function SessionForm({
 
       {/* Deliberately a different surface from the set cards: this is the
           session as a whole, not another set in the list. */}
-      <div className="mt-10 rounded-2xl border-2 border-[var(--color-sage)]/35 bg-[var(--color-sage-tint)]/40 p-5">
-        <div className="mb-4 flex items-center gap-2 border-b border-[var(--color-sage)]/25 pb-3">
-          <PawIcon className="h-4 w-4 shrink-0 text-[var(--color-sage-dark)]" />
-          <h2 className="font-serif text-lg text-[var(--color-ink)]">
-            Whole session
-          </h2>
-          <span className="text-xs text-[var(--color-ink-soft)]">
-            · applies across every set
-          </span>
-        </div>
 
-        <div className="rounded-2xl border border-dashed border-[var(--color-sage)]/40 bg-[var(--color-card)]/70 p-3">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
-            Aggregate rating — average across {form.sets.length}{" "}
-            {form.sets.length === 1 ? "set" : "sets"}
-          </p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {aggregateRatings(form, exercise).map((r) => (
-              <div key={r.key} className="text-sm">
-                <span className="text-[var(--color-ink-soft)]">{r.label}</span>{" "}
-                <span className="font-semibold text-[var(--color-ink)]">{r.score}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-              Rest between sets
-            </span>
-            <select
-              value={form.restLabel ?? "None"}
-              onChange={(e) => setForm((f) => ({ ...f, restLabel: e.target.value }))}
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
-            >
-              {REST_PRESETS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-              Environment
-            </span>
-            <input
-              value={form.environment ?? ""}
-              onChange={(e) => setForm((f) => ({ ...f, environment: e.target.value }))}
-              placeholder="e.g. Outside — warm, or Air-conditioned gym"
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
-            />
-          </label>
-        </div>
-
-        <label className="mt-5 block">
-          <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-            Session notes
-          </span>
-          <textarea
-            rows={3}
-            value={form.notes ?? ""}
-            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-            placeholder="How the session went overall"
-            className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
-          />
-        </label>
-      </div>
+      {ratingModal && (
+        <RatingDefModal
+          initial={ratingModal.def}
+          existingKeys={ratingDefs.map((d) => d.key)}
+          onSave={saveRatingDef}
+          onClose={() => setRatingModal(null)}
+        />
+      )}
 
       {error && (
         <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-[var(--color-down)]">

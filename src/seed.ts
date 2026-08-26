@@ -6,20 +6,71 @@ import { getPayload } from "payload";
 import config from "./payload.config";
 import { solidColorPng } from "./seed-assets";
 
+// 1-5 with wording for each level, so the session form can say what a score
+// actually means rather than just showing a number.
 const ratingDims = [
-  { key: "form", label: "Form", max: 10 },
-  { key: "control", label: "Control", max: 10 },
-  { key: "symmetry", label: "Symmetry", max: 10 },
-  { key: "effort", label: "Effort", max: 10 },
+  {
+    key: "form",
+    label: "Form",
+    max: 5,
+    scale: [
+      "Significant form breakdown",
+      "Noticeable form deterioration",
+      "Minor form changes",
+      "Maintains good form",
+      "Maintains excellent form throughout",
+    ],
+  },
+  {
+    key: "control",
+    label: "Control",
+    max: 5,
+    scale: [
+      "Little to no control",
+      "Frequent loss of control",
+      "Occasional loss of control",
+      "Mostly controlled",
+      "Fully controlled throughout",
+    ],
+  },
+  {
+    key: "symmetry",
+    label: "Symmetry",
+    max: 5,
+    scale: [
+      "Heavily favouring one side",
+      "Clear asymmetry under load",
+      "Slight asymmetry",
+      "Near-even loading",
+      "Even loading throughout",
+    ],
+  },
+  {
+    key: "intensity",
+    label: "Intensity",
+    max: 5,
+    scale: [
+      "Barely raised effort, no panting",
+      "Light workload, brief panting",
+      "Moderate workload, steady panting",
+      "Meaningful incline/cardio workload with substantial panting",
+      "Maximal sustained effort, heavy panting throughout",
+    ],
+  },
 ];
 
 /**
  * Builds the sets array from per-dimension score columns, e.g.
- * { form: [5, 6, 7] } -> 3 sets. `work` sets each set's reps (or passes).
+  * { form: [5, 6, 7] } -> 3 sets. `work` sets each set's reps (or passes).
  */
 function buildSets(
   perDimensionScores: Record<string, number[]>,
-  work: { reps?: number[]; passes?: number[]; notes?: string[] } = {},
+  work: {
+    reps?: number[];
+    passes?: number[];
+    notes?: string[];
+    watchItems?: string[][];
+  } = {},
 ) {
   const keys = Object.keys(perDimensionScores);
   const count = Math.max(...keys.map((k) => perDimensionScores[k].length));
@@ -28,6 +79,7 @@ function buildSets(
     reps: work.reps?.[i],
     passes: work.passes?.[i],
     notes: work.notes?.[i],
+    watchItems: work.watchItems?.[i],
     ratings: keys.map((key) => ({ key, score: perDimensionScores[key][i] })),
   }));
 }
@@ -126,13 +178,18 @@ async function main() {
         "Better control today. Left knee begins moving outward near fatigue.",
       sets: buildSets(
         {
-          form: [5, 6, 7],
-          control: [7, 8, 9],
-          symmetry: [5, 6, 7],
-          effort: [6, 7, 8],
+          form: [2, 3, 4],
+          control: [4, 4, 4],
+          symmetry: [2, 3, 4],
+          intensity: [3, 4, 4],
         },
         {
           reps: [6, 6, 6],
+          watchItems: [
+            ["Hesitation before rising"],
+            [],
+            ["Left knee flaring", "Weight shifting right"],
+          ],
           notes: [
             "Slow to commit on the first two reps.",
             "Much cleaner once warmed up.",
@@ -141,8 +198,8 @@ async function main() {
         },
       ),
       media: [
-        { setNumber: 1, type: "video", file: sageImg.id, label: "Set 1", notes: "Good alignment early", duration: "0:12", order: 1 },
-        { setNumber: 2, type: "video", file: tanImg.id, label: "Set 2", notes: "More controlled descent", duration: "0:11", order: 2 },
+        { setNumber: 1, type: "video", file: sageImg.id, label: "Set 1", notes: "Good alignment early", duration: "0:12", activeMovementSeconds: 12, order: 1 },
+        { setNumber: 2, type: "video", file: tanImg.id, label: "Set 2", notes: "More controlled descent", duration: "0:11", activeMovementSeconds: 11, order: 2 },
         { setNumber: 3, type: "image", file: slateImg.id, label: "Annotated frame", notes: "Left knee flaring", order: 3 },
       ],
     },
@@ -158,10 +215,10 @@ async function main() {
       notes: "Steady, deliberate steps. Good hip engagement on the left.",
       sets: buildSets(
         {
-          form: [7, 8, 9],
-          control: [7, 8, 9],
-          symmetry: [8, 9, 10],
-          effort: [6, 7, 8],
+          form: [4, 4, 4],
+          control: [4, 4, 4],
+          symmetry: [4, 4, 5],
+          intensity: [3, 4, 4],
         },
         {
           passes: [5, 5, 5],
@@ -189,7 +246,7 @@ async function main() {
       environment: "Indoor treadmill room",
       notes: "Warm-up to working pace and back down without soreness after.",
       sets: buildSets(
-        { form: [7], control: [7], symmetry: [7], effort: [8] },
+        { form: [4], control: [4], symmetry: [4], intensity: [4] },
         { notes: ["Continuous walk — warm-up, working pace, cool down."] },
       ),
       media: [
@@ -210,10 +267,10 @@ async function main() {
       notes: "First session back after rest. Cautious but willing.",
       sets: buildSets(
         {
-          form: [4, 5, 6],
-          control: [5, 6, 7],
-          symmetry: [4, 5, 6],
-          effort: [5, 6, 7],
+          form: [2, 2, 3],
+          control: [2, 3, 4],
+          symmetry: [2, 2, 3],
+          intensity: [2, 3, 4],
         },
         { reps: [5, 5, 5] },
       ),

@@ -12,6 +12,7 @@ import type {
   Exercise,
   MediaItem,
   RatingDimension,
+  RatingDefinition,
   SessionSet,
   TrainingSession,
 } from "./types";
@@ -62,6 +63,18 @@ function mediaFileId(file: number | PayloadMedia): string {
   return String(typeof file === "number" ? file : file.id);
 }
 
+/** File facts Payload records on upload; absent when the doc wasn't joined. */
+function mediaFileFacts(file: number | PayloadMedia) {
+  if (typeof file === "number") return {};
+  return {
+    fileName: file.filename ?? undefined,
+    fileSize: file.filesize ?? undefined,
+    mimeType: file.mimeType ?? undefined,
+    width: file.width ?? undefined,
+    height: file.height ?? undefined,
+  };
+}
+
 function mapMediaItem(
   item: NonNullable<PayloadSession["media"]>[number],
   index: number,
@@ -76,6 +89,8 @@ function mapMediaItem(
     notes: item.notes ?? undefined,
     duration: item.duration ?? undefined,
     capturedAt: item.capturedAt ?? undefined,
+    activeMovementSeconds: item.activeMovementSeconds ?? undefined,
+    ...mediaFileFacts(item.file),
     order: item.order ?? index,
   };
 }
@@ -88,6 +103,7 @@ function mapSessionSet(
     reps: set.reps ?? undefined,
     passes: set.passes ?? undefined,
     notes: set.notes ?? undefined,
+    watchItems: set.watchItems ?? undefined,
     ratings: (set.ratings ?? []).map((r) => ({ key: r.key, score: r.score })),
   };
 }
@@ -100,6 +116,14 @@ export function mapSession(doc: PayloadSession): TrainingSession {
     ),
     date: doc.date,
     sets: (doc.sets ?? []).map(mapSessionSet),
+    ratingDefs: (doc.ratingDefs ?? []).map(
+      (d): RatingDefinition => ({
+        key: d.key,
+        label: d.label,
+        max: d.max,
+        scale: d.scale ?? undefined,
+      }),
+    ),
     restLabel: doc.restLabel ?? undefined,
     notes: doc.notes ?? undefined,
     environment: doc.environment ?? undefined,
@@ -117,7 +141,14 @@ export function sessionToPayloadBody(session: TrainingSession) {
       reps: s.reps ?? null,
       passes: s.passes ?? null,
       notes: s.notes ?? null,
+      watchItems: s.watchItems ?? [],
       ratings: s.ratings.map((r) => ({ key: r.key, score: r.score })),
+    })),
+    ratingDefs: (session.ratingDefs ?? []).map((d) => ({
+      key: d.key,
+      label: d.label,
+      max: d.max,
+      scale: d.scale && d.scale.length ? d.scale : undefined,
     })),
     restLabel: session.restLabel ?? null,
     notes: session.notes ?? null,
@@ -132,6 +163,7 @@ export function sessionToPayloadBody(session: TrainingSession) {
         notes: m.notes ?? null,
         duration: m.duration ?? null,
         capturedAt: m.capturedAt ?? null,
+        activeMovementSeconds: m.activeMovementSeconds ?? null,
         order: m.order,
       })),
   };

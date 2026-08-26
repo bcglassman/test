@@ -53,6 +53,15 @@ export const Sessions: CollectionConfig = {
           admin: { description: "Note about this set specifically." },
         },
         {
+          name: "watchItems",
+          type: "text",
+          hasMany: true,
+          admin: {
+            description:
+              'Short things to watch for in this set, e.g. "left knee flaring".',
+          },
+        },
+        {
           name: "ratings",
           type: "array",
           fields: [
@@ -60,6 +69,20 @@ export const Sessions: CollectionConfig = {
             { name: "score", type: "number", required: true },
           ],
         },
+      ],
+    },
+    {
+      name: "ratingDefs",
+      type: "array",
+      admin: {
+        description:
+          "This session's rating dimensions, seeded from the exercise as a template then editable here.",
+      },
+      fields: [
+        { name: "key", type: "text", required: true },
+        { name: "label", type: "text", required: true },
+        { name: "max", type: "number", required: true, defaultValue: 5 },
+        { name: "scale", type: "text", hasMany: true },
       ],
     },
     {
@@ -106,6 +129,14 @@ export const Sessions: CollectionConfig = {
         { name: "label", type: "text" },
         { name: "notes", type: "text" },
         { name: "duration", type: "text" },
+        {
+          name: "activeMovementSeconds",
+          type: "number",
+          admin: {
+            description:
+              "Seconds of actual movement, prepopulated from the clip's duration then editable.",
+          },
+        },
         {
           name: "capturedAt",
           type: "date",

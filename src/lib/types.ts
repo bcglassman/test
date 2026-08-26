@@ -24,6 +24,18 @@ export interface MediaItem {
    * added. Absent when the source didn't report one.
    */
   capturedAt?: string;
+  /**
+   * Seconds of actual movement in this clip. Prepopulated from the video's
+   * own duration on upload, then editable — the raw clip usually includes
+   * setup and rest that shouldn't count.
+   */
+  activeMovementSeconds?: number;
+  /** Read-only file facts from the CMS, for the media info panel. */
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  width?: number;
+  height?: number;
   order: number;
   /**
    * The CMS's own id for the uploaded asset (e.g. Payload's `media`
@@ -84,8 +96,13 @@ export interface SessionSet {
   /** Some exercises log "passes" instead of reps (e.g. cavaletti). */
   passes?: number;
   notes?: string;
+  /** Short things to watch for in this set, e.g. "left knee flaring". */
+  watchItems?: string[];
   ratings: RatingScore[];
 }
+
+/** A rating dimension's definition, without any score attached. */
+export type RatingDefinition = Omit<RatingDimension, "score">;
 
 export interface TrainingSession {
   id: string;
@@ -94,6 +111,13 @@ export interface TrainingSession {
   date: string;
   /** The sets performed. Session-level scores are the average across these — see aggregateRatings(). */
   sets: SessionSet[];
+  /**
+   * This session's rating dimensions. Seeded from the exercise's
+   * `defaultRatings` — which is only a template — then editable here, so a
+   * session can add or drop dimensions without touching the exercise.
+   * Empty on older sessions, which fall back to the exercise's definitions.
+   */
+  ratingDefs?: RatingDefinition[];
   /** Rest taken between sets — a property of the session, not any one set. */
   restLabel?: string;
   /** Notes about the session as a whole; per-set notes live on the set. */

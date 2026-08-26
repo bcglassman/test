@@ -32,9 +32,10 @@ export async function mediaFromFile(
   capturedAt?: string,
 ): Promise<MediaItem> {
   const type: MediaType = file.type.startsWith("video") ? "video" : "image";
-  // Read this before compressing — re-encoding produces a brand-new File
+  // Read these before compressing — re-encoding produces a brand-new File
   // whose lastModified is "now", which would lose the original capture time.
   const captured = capturedAt ?? capturedAtFromFile(file);
+  const durationSeconds = await probeVideoDuration(file);
   const upload =
     type === "video" ? await compressVideo(file, {}, onCompressProgress) : file;
   const { doc } = await payloadUpload<{ doc: PayloadMedia }>("media", upload, {
@@ -49,8 +50,47 @@ export async function mediaFromFile(
     label: `Set ${setNumber}`,
     notes: "",
     capturedAt: captured,
+    duration:
+      durationSeconds === undefined
+        ? undefined
+        : formatClipDuration(durationSeconds),
+    activeMovementSeconds:
+      durationSeconds === undefined ? undefined : Math.round(durationSeconds),
     order,
   };
+}
+
+/** 12.4 -> "0:12", for the badge on a clip's thumbnail. */
+function formatClipDuration(seconds: number): string {
+  const total = Math.round(seconds);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/**
+ * A video's duration in seconds, read from its own metadata. Undefined for
+ * images, unreadable files, or streams the browser reports as unbounded.
+ */
+export function probeVideoDuration(file: File): Promise<number | undefined> {
+  if (!file.type.startsWith("video/") || typeof document === "undefined") {
+    return Promise.resolve(undefined);
+  }
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    const done = (value: number | undefined) => {
+      URL.revokeObjectURL(url);
+      resolve(value);
+    };
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const { duration } = video;
+      done(Number.isFinite(duration) && duration > 0 ? duration : undefined);
+    };
+    video.onerror = () => done(undefined);
+    // Don't let a malformed file hang the upload.
+    setTimeout(() => done(undefined), 10_000);
+    video.src = url;
+  });
 }
 
 /**

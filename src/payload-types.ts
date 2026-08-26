@@ -200,6 +200,10 @@ export interface Session {
          * Note about this set specifically.
          */
         notes?: string | null;
+        /**
+         * Short things to watch for in this set, e.g. "left knee flaring".
+         */
+        watchItems?: string[] | null;
         ratings?:
           | {
               key: string;
@@ -207,6 +211,18 @@ export interface Session {
               id?: string | null;
             }[]
           | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * This session's rating dimensions, seeded from the exercise as a template then editable here.
+   */
+  ratingDefs?:
+    | {
+        key: string;
+        label: string;
+        max: number;
+        scale?: string[] | null;
         id?: string | null;
       }[]
     | null;
@@ -233,6 +249,10 @@ export interface Session {
         label?: string | null;
         notes?: string | null;
         duration?: string | null;
+        /**
+         * Seconds of actual movement, prepopulated from the clip's duration then editable.
+         */
+        activeMovementSeconds?: number | null;
         /**
          * When the clip/photo was recorded, read from the file's own metadata on upload.
          */
@@ -402,6 +422,7 @@ export interface SessionsSelect<T extends boolean = true> {
         reps?: T;
         passes?: T;
         notes?: T;
+        watchItems?: T;
         ratings?:
           | T
           | {
@@ -409,6 +430,15 @@ export interface SessionsSelect<T extends boolean = true> {
               score?: T;
               id?: T;
             };
+        id?: T;
+      };
+  ratingDefs?:
+    | T
+    | {
+        key?: T;
+        label?: T;
+        max?: T;
+        scale?: T;
         id?: T;
       };
   restLabel?: T;
@@ -423,6 +453,7 @@ export interface SessionsSelect<T extends boolean = true> {
         label?: T;
         notes?: T;
         duration?: T;
+        activeMovementSeconds?: T;
         capturedAt?: T;
         order?: T;
         id?: T;

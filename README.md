@@ -40,10 +40,15 @@ seeding if any exercise already exists.
   self-contained card holding its own reps (or passes — toggleable per
   set), rating sliders, notes, and media, with its own upload button. Sets
   can be added and removed; removing one renumbers the rest and moves its
-  media rather than orphaning it. Below the sets, a **Whole session**
-  section covers what spans them all: the aggregate rating (averaged across
-  sets), rest between sets, environment (e.g. "Outside — warm",
-  "Air-conditioned gym"), and overall notes. Media can come from the local
+  media rather than orphaning it. Each set also carries short **watch items**
+  ("left knee flaring") and its own media cards, which show the clip beside
+  a roomy notes field, its capture time, and its active-movement seconds.
+  Scores step in halves and show what the number means as you drag. Ratings
+  can be added, edited or removed per session via a modal — the exercise's
+  dimensions are only a starting template. Above the sets, a sticky
+  **Session Summary** shows the aggregate rating and total active movement;
+  it expands at the top of the page for rest, environment and overall
+  notes, and collapses to a compact bar once you scroll into the sets. Media can come from the local
   file picker or, when Google credentials are configured (see
   `.env.example`), straight from Google Drive. Logged out, this screen shows
   a gate linking to `/admin/login` instead. The sidebar supports free-text

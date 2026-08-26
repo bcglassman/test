@@ -1,5 +1,6 @@
 import type {
   Exercise,
+  RatingDefinition,
   RatingDimension,
   SessionWithExercise,
   TrainingSession,
@@ -10,11 +11,59 @@ import type {
  * joined with the exercise's current label/max/scale — so ratings always
  * reflect what the exercise defines today, not a stale per-session copy.
  */
+/**
+ * The rating dimensions in force for a session. The exercise's own
+ * `defaultRatings` are only a template: once a session has its own
+ * `ratingDefs` those win, so editing or dropping a dimension in one session
+ * doesn't disturb the exercise or any other session.
+ */
+export function resolveRatingDefs(
+  session: Pick<TrainingSession, "ratingDefs">,
+  exercise: Exercise,
+): RatingDefinition[] {
+  return session.ratingDefs?.length
+    ? session.ratingDefs
+    : exercise.defaultRatings;
+}
+
+/**
+ * The scale wording for a score. Scores can land on half marks, which no
+ * single level describes — those read as a range between the two levels
+ * they sit between.
+ */
+export function describeScore(
+  def: RatingDefinition,
+  score: number,
+): string | undefined {
+  if (!def.scale?.length) return undefined;
+  const at = (level: number) => def.scale?.[Math.round(level) - 1];
+  if (Number.isInteger(score)) return at(score);
+  const lower = at(Math.floor(score));
+  const upper = at(Math.ceil(score));
+  if (lower && upper) return `Between: ${lower} → ${upper}`;
+  return lower ?? upper;
+}
+
+/** Seconds of movement across a session's clips — see MediaItem.activeMovementSeconds. */
+export function totalActiveMovementSeconds(
+  session: Pick<TrainingSession, "media">,
+): number {
+  return session.media.reduce((sum, m) => sum + (m.activeMovementSeconds ?? 0), 0);
+}
+
+/** 134 -> "2m 14s"; 45 -> "45s". */
+export function formatDuration(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return minutes > 0 ? `${minutes}m ${rest}s` : `${rest}s`;
+}
+
 export function aggregateRatings(
   session: TrainingSession,
   exercise: Exercise,
 ): RatingDimension[] {
-  return exercise.defaultRatings.map((def) => {
+  return resolveRatingDefs(session, exercise).map((def) => {
     const scores = session.sets
       .map((set) => set.ratings.find((r) => r.key === def.key)?.score)
       .filter((s): s is number => typeof s === "number");
