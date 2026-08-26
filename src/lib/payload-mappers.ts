@@ -127,6 +127,17 @@ export function mapSession(doc: PayloadSession): TrainingSession {
     restLabel: doc.restLabel ?? undefined,
     notes: doc.notes ?? undefined,
     environment: doc.environment ?? undefined,
+    locationName: doc.locationName ?? undefined,
+    latitude: doc.latitude ?? undefined,
+    longitude: doc.longitude ?? undefined,
+    weather: doc.weather
+      ? {
+          temperatureC: doc.weather.temperatureC ?? undefined,
+          humidityPercent: doc.weather.humidityPercent ?? undefined,
+          description: doc.weather.description ?? undefined,
+          fetchedAt: doc.weather.fetchedAt ?? undefined,
+        }
+      : undefined,
     media: (doc.media ?? []).map(mapMediaItem),
   };
 }
@@ -153,6 +164,17 @@ export function sessionToPayloadBody(session: TrainingSession) {
     restLabel: session.restLabel ?? null,
     notes: session.notes ?? null,
     environment: session.environment ?? null,
+    locationName: session.locationName ?? null,
+    latitude: session.latitude ?? null,
+    longitude: session.longitude ?? null,
+    weather: session.weather
+      ? {
+          temperatureC: session.weather.temperatureC ?? null,
+          humidityPercent: session.weather.humidityPercent ?? null,
+          description: session.weather.description ?? null,
+          fetchedAt: session.weather.fetchedAt ?? null,
+        }
+      : null,
     media: session.media
       .filter((m) => m.fileId)
       .map((m) => ({

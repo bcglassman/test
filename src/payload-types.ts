@@ -231,6 +231,27 @@ export interface Session {
    */
   restLabel?: string | null;
   /**
+   * Where the session took place; used to look up the weather.
+   */
+  locationName?: string | null;
+  /**
+   * Decimal degrees.
+   */
+  latitude?: number | null;
+  /**
+   * Decimal degrees.
+   */
+  longitude?: number | null;
+  /**
+   * Conditions at the session's time and place, fetched once and stored so the record doesn't change later.
+   */
+  weather?: {
+    temperatureC?: number | null;
+    humidityPercent?: number | null;
+    description?: string | null;
+    fetchedAt?: string | null;
+  };
+  /**
    * Where and under what conditions, e.g. "Outside — warm" or "Air-conditioned gym".
    */
   environment?: string | null;
@@ -442,6 +463,17 @@ export interface SessionsSelect<T extends boolean = true> {
         id?: T;
       };
   restLabel?: T;
+  locationName?: T;
+  latitude?: T;
+  longitude?: T;
+  weather?:
+    | T
+    | {
+        temperatureC?: T;
+        humidityPercent?: T;
+        description?: T;
+        fetchedAt?: T;
+      };
   environment?: T;
   notes?: T;
   media?:

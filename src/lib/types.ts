@@ -124,6 +124,17 @@ export interface TrainingSession {
   notes?: string;
   /** Where/under what conditions, e.g. "Outside — warm" or "Air-conditioned gym". */
   environment?: string;
+  /** Where the session took place; drives the weather lookup. */
+  locationName?: string;
+  latitude?: number;
+  longitude?: number;
+  /** Conditions at this session's time and place, fetched once and stored. */
+  weather?: {
+    temperatureC?: number;
+    humidityPercent?: number;
+    description?: string;
+    fetchedAt?: string;
+  };
   media: MediaItem[];
 }
 

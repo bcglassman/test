@@ -91,6 +91,28 @@ export const Sessions: CollectionConfig = {
       admin: { description: "Rest taken between sets." },
     },
     {
+      name: "locationName",
+      type: "text",
+      defaultValue: "Singapore",
+      admin: { description: "Where the session took place; used to look up the weather." },
+    },
+    { name: "latitude", type: "number", admin: { description: "Decimal degrees." } },
+    { name: "longitude", type: "number", admin: { description: "Decimal degrees." } },
+    {
+      name: "weather",
+      type: "group",
+      admin: {
+        description:
+          "Conditions at the session's time and place, fetched once and stored so the record doesn't change later.",
+      },
+      fields: [
+        { name: "temperatureC", type: "number" },
+        { name: "humidityPercent", type: "number" },
+        { name: "description", type: "text" },
+        { name: "fetchedAt", type: "date" },
+      ],
+    },
+    {
       name: "environment",
       type: "text",
       admin: {

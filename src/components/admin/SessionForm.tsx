@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type {
   Exercise,
@@ -36,6 +36,13 @@ import {
   isGoogleDriveConfigured,
   pickDriveFiles,
 } from "@/lib/google-drive";
+import {
+  DEFAULT_LOCATION,
+  LOCATION_PRESETS,
+  fetchWeatherAt,
+  formatWeather,
+  geocodeLocation,
+} from "@/lib/weather";
 
 const REST_PRESETS = ["None", "~30 sec", "~45 sec", "~60 sec", "~90 sec", "~2 min", "~5 min", "~10 min"];
 
@@ -93,6 +100,9 @@ function blankFromExercise(exercise: Exercise): TrainingSession {
     ratingDefs: defs,
     restLabel: "~60 sec",
     notes: "",
+    locationName: DEFAULT_LOCATION.name,
+    latitude: DEFAULT_LOCATION.latitude,
+    longitude: DEFAULT_LOCATION.longitude,
     media: [],
   };
 }
@@ -129,10 +139,11 @@ export function SessionForm({
   const pendingSetRef = useRef<number>(1);
 
   const exercise = exercises.find((e) => e.id === form.exerciseId) ?? exercises[0];
-  const ratingDefs = useMemo(
-    () => resolveRatingDefs(form, exercise),
-    [form, exercise],
-  );
+  // The form's own list is authoritative once it's initialised — including
+  // when it's empty. Falling back to the exercise here made removing the
+  // last rating silently resurrect the exercise's defaults, which then
+  // vanished again the moment another rating was added.
+  const ratingDefs = form.ratingDefs ?? [];
   const totalActiveSeconds = totalActiveMovementSeconds(form);
   // null = closed; { def: undefined } = adding; { def } = editing that one.
   const [ratingModal, setRatingModal] = useState<{
@@ -141,6 +152,8 @@ export function SessionForm({
   const [summaryOpen, setSummaryOpen] = useState(true);
   const confirm = useConfirm();
   const [scrolled, setScrolled] = useState(false);
+  const [weatherBusy, setWeatherBusy] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
 
   // Expanded, the summary is tall enough to swallow a third of the screen.
   // Once you scroll into the sets it drops to the compact aggregate row, so
@@ -152,6 +165,43 @@ export function SessionForm({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
   const summaryExpanded = summaryOpen && !scrolled;
+
+  /**
+   * Looks the weather up once and stores it on the session — a past
+   * session's conditions don't change, and storing them keeps the record
+   * intact even if the service is unavailable later.
+   */
+  async function lookUpWeather() {
+    if (weatherBusy) return;
+    setWeatherBusy(true);
+    setWeatherError(null);
+    try {
+      let { latitude, longitude } = form;
+      if (latitude == null || longitude == null) {
+        const place = await geocodeLocation(form.locationName ?? DEFAULT_LOCATION.name);
+        if (!place) {
+          setWeatherError("Couldn't find that location.");
+          return;
+        }
+        ({ latitude, longitude } = place);
+        setForm((f) => ({ ...f, latitude, longitude }));
+      }
+      const reading = await fetchWeatherAt(
+        latitude,
+        longitude,
+        new Date(form.date).toISOString(),
+      );
+      if (!reading) {
+        setWeatherError("No weather available for that date and place.");
+        return;
+      }
+      setForm((f) => ({ ...f, weather: reading }));
+    } catch {
+      setWeatherError("Couldn't reach the weather service.");
+    } finally {
+      setWeatherBusy(false);
+    }
+  }
 
   function updateSetRating(setNumber: number, key: string, score: number) {
     setForm((f) => ({
@@ -568,6 +618,62 @@ export function SessionForm({
                 </label>
               </div>
 
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+                    Location
+                  </span>
+                  <input
+                    list="location-presets"
+                    value={form.locationName ?? ""}
+                    onChange={(e) =>
+                      // Clear the coordinates so the next lookup re-geocodes.
+                      setForm((f) => ({
+                        ...f,
+                        locationName: e.target.value,
+                        latitude: undefined,
+                        longitude: undefined,
+                      }))
+                    }
+                    placeholder={DEFAULT_LOCATION.name}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
+                  />
+                  <datalist id="location-presets">
+                    {LOCATION_PRESETS.map((p) => (
+                      <option key={p.name} value={p.name} />
+                    ))}
+                  </datalist>
+                </label>
+
+                <div>
+                  <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+                    Weather
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] px-3 py-2.5 text-sm text-[var(--color-ink)]">
+                      {formatWeather(form.weather) ?? (
+                        <span className="text-[var(--color-ink-soft)]">
+                          Not looked up yet
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={lookUpWeather}
+                      disabled={weatherBusy}
+                      className="shrink-0 rounded-lg border border-[var(--color-border)] px-3 py-2.5 text-sm font-medium text-[var(--color-sage-dark)] hover:border-[var(--color-sage)] disabled:opacity-50"
+                    >
+                      {weatherBusy ? "Looking up…" : "Look up"}
+                    </button>
+                  </div>
+                  {weatherError && (
+                    <p className="mt-1 text-xs text-[var(--color-down)]">
+                      {weatherError}
+                    </p>
+                  )}
+                </div>
+              </div>
+
               <label className="mt-4 block">
                 <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
                   Session notes
@@ -654,6 +760,25 @@ export function SessionForm({
                   </div>
                 </div>
 
+                {ratingDefs.length === 0 ? (
+                  <div className="mt-4 rounded-lg border-2 border-dashed border-[var(--color-border)] p-6 text-center">
+                    <p className="text-sm font-medium text-[var(--color-ink)]">
+                      No ratings for this session
+                    </p>
+                    <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-[var(--color-ink-soft)]">
+                      Every set is scored against the same set of ratings. Add
+                      one to start scoring, or pick from the library.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setRatingModal({})}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[var(--color-sage)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-sage-dark)]"
+                    >
+                      <PlusIcon className="h-3.5 w-3.5" />
+                      Add a rating
+                    </button>
+                  </div>
+                ) : (
                 <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
                   {ratingDefs.map((def) => {
                     const score =
@@ -681,7 +806,7 @@ export function SessionForm({
                               type="button"
                               onClick={() => setRatingModal({ def })}
                               aria-label={`Edit ${def.label} rating`}
-                              className="rounded p-1 text-[var(--color-ink-soft)] opacity-0 transition-opacity hover:text-[var(--color-ink)] focus:opacity-100 group-hover:opacity-100"
+                              className="rounded p-1 text-[var(--color-ink-soft)]/60 transition-colors hover:bg-white hover:text-[var(--color-ink)]"
                             >
                               <PencilIcon className="h-3.5 w-3.5" />
                             </button>
@@ -689,7 +814,7 @@ export function SessionForm({
                               type="button"
                               onClick={() => removeRatingDef(def.key)}
                               aria-label={`Remove ${def.label} rating`}
-                              className="rounded p-1 text-[var(--color-ink-soft)] opacity-0 transition-opacity hover:text-[var(--color-down)] focus:opacity-100 group-hover:opacity-100"
+                              className="rounded p-1 text-[var(--color-ink-soft)]/60 transition-colors hover:bg-white hover:text-[var(--color-down)]"
                             >
                               <CloseIcon className="h-3.5 w-3.5" />
                             </button>
@@ -721,6 +846,7 @@ export function SessionForm({
                     Add rating
                   </button>
                 </div>
+                )}
 
                 <label className="mt-4 block">
                   <span className="mb-1.5 block text-xs font-medium text-[var(--color-ink-soft)]">

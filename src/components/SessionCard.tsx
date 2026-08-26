@@ -6,7 +6,13 @@ import {
   CategoryIcon,
 } from "./icons";
 import { MediaThumb } from "./MediaThumb";
-import { formatSessionDate, formatSessionTime, setSummary } from "@/lib/session-utils";
+import {
+  formatSessionDate,
+  formatSessionTime,
+  resolveRatingDefs,
+  setSummary,
+} from "@/lib/session-utils";
+import { formatWeather } from "@/lib/weather";
 
 function Trend({ current, previous }: { current: number; previous?: number }) {
   if (previous === undefined || previous === current) return null;
@@ -27,10 +33,17 @@ function Trend({ current, previous }: { current: number; previous?: number }) {
 export function SessionCard({ session }: { session: SessionWithExercise }) {
   const { exercise } = session;
   const countLabel = setSummary(session);
+  const ratingDefs = resolveRatingDefs(session, exercise);
+  // Flattened so the card can list them all together, each tagged with its set.
+  const watchItems = session.sets.flatMap((set) =>
+    (set.watchItems ?? [])
+      .filter((text) => text.trim())
+      .map((text) => ({ setNumber: set.setNumber, text })),
+  );
 
   return (
     <article className="flex flex-col gap-5 border-b border-[var(--color-border)] py-8 first:pt-0 lg:flex-row">
-      <div className="w-full shrink-0 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 lg:w-[380px]">
+      <div className="w-full shrink-0 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 lg:w-[460px]">
         <div className="flex items-start gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-sage-tint)] text-[var(--color-sage-dark)]">
             <CategoryIcon category={exercise.category} className="h-5 w-5" />
@@ -59,7 +72,7 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
           <Trend current={session.overall} previous={session.previousOverall} />
         </div>
 
-        <dl className="mt-4 grid grid-cols-4 gap-x-2 gap-y-3 text-center">
+        <dl className="mt-4 grid grid-cols-5 gap-x-2 gap-y-3 text-center">
           {session.ratings.map((r) => {
             const scaleText = r.scale?.[r.score - 1];
             return (
@@ -86,14 +99,22 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
           </div>
         )}
 
-        {session.environment && (
+        {(session.environment || session.weather) && (
           <div className="mt-4 border-t border-[var(--color-border)] pt-4">
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-soft)]">
               Environment
             </p>
-            <p className="mt-1 text-sm leading-relaxed text-[var(--color-ink)]">
-              {session.environment}
-            </p>
+            {session.environment && (
+              <p className="mt-1 text-sm leading-relaxed text-[var(--color-ink)]">
+                {session.environment}
+              </p>
+            )}
+            {formatWeather(session.weather) && (
+              <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
+                {session.locationName ? `${session.locationName} · ` : ""}
+                {formatWeather(session.weather)}
+              </p>
+            )}
           </div>
         )}
 
@@ -107,6 +128,24 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
             </p>
           </div>
         )}
+
+        {watchItems.length > 0 && (
+          <div className="mt-4 border-t border-[var(--color-border)] pt-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-soft)]">
+              Watch items
+            </p>
+            <ul className="mt-1.5 flex flex-col gap-1">
+              {watchItems.map((w, i) => (
+                <li key={i} className="flex gap-2 text-sm text-[var(--color-ink)]">
+                  <span className="shrink-0 rounded bg-[var(--color-cream)] px-1.5 text-xs leading-5 text-[var(--color-ink-soft)]">
+                    Set {w.setNumber}
+                  </span>
+                  <span className="leading-5">{w.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col gap-5">
@@ -114,6 +153,7 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
           .filter(
             (set) =>
               set.notes ||
+              set.ratings.length > 0 ||
               session.media.some((m) => m.setNumber === set.setNumber),
           )
           .map((set) => {
@@ -132,13 +172,35 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
                   Set {set.setNumber}
                   {work && ` · ${work}`}
                 </p>
+                {ratingDefs.length > 0 && (
+                  <dl className="mb-2 flex flex-wrap gap-x-4 gap-y-1">
+                    {ratingDefs.map((def) => {
+                      const score = set.ratings.find((r) => r.key === def.key)?.score;
+                      if (score === undefined) return null;
+                      return (
+                        <div key={def.key} className="flex gap-1.5 text-sm">
+                          <dt className="text-[var(--color-ink-soft)]">{def.label}</dt>
+                          <dd
+                            className="font-semibold text-[var(--color-ink)]"
+                            title={def.scale?.[Math.round(score) - 1]}
+                          >
+                            {score}
+                            <span className="font-normal text-[var(--color-ink-soft)]">
+                              /{def.max}
+                            </span>
+                          </dd>
+                        </div>
+                      );
+                    })}
+                  </dl>
+                )}
                 {set.notes && (
                   <p className="mb-2 text-sm leading-relaxed text-[var(--color-ink)]">
                     {set.notes}
                   </p>
                 )}
                 {setMedia.length > 0 && (
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     {setMedia.map((m) => (
                       <MediaThumb key={m.id} media={m} />
                     ))}

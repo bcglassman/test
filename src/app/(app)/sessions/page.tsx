@@ -34,6 +34,10 @@ export default function SessionsAdminPage() {
           restLabel: selected.restLabel,
           notes: selected.notes,
           environment: selected.environment,
+          locationName: selected.locationName,
+          latitude: selected.latitude,
+          longitude: selected.longitude,
+          weather: selected.weather,
           media: selected.media,
         }
       : null;
