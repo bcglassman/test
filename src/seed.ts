@@ -69,7 +69,8 @@ function buildSets(
     reps?: number[];
     passes?: number[];
     notes?: string[];
-    watchItems?: string[][];
+    /** Per set: what to watch for, optionally pinned to a time in the clip. */
+    watchPoints?: { text: string; atSeconds?: number }[][];
   } = {},
 ) {
   const keys = Object.keys(perDimensionScores);
@@ -79,7 +80,7 @@ function buildSets(
     reps: work.reps?.[i],
     passes: work.passes?.[i],
     notes: work.notes?.[i],
-    watchItems: work.watchItems?.[i],
+    watchPoints: work.watchPoints?.[i],
     ratings: keys.map((key) => ({ key, score: perDimensionScores[key][i] })),
   }));
 }
@@ -106,6 +107,48 @@ async function ensureDog(payload: Awaited<ReturnType<typeof getPayload>>) {
  * whoever set the site up, so they become admins rather than being
  * demoted out of their own admin area; new accounts default to "owner".
  */
+/**
+ * Watch items used to be a plain list of strings and are now `watchPoints`,
+ * which can carry a timestamp. Copies the old strings across so nothing
+ * typed before this change is lost, then clears them so the two can't
+ * drift apart. Idempotent: a set that already has watchPoints is skipped.
+ */
+async function backfillWatchPoints(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+) {
+  const sessions = await payload.find({
+    collection: "sessions",
+    limit: 500,
+    depth: 0,
+  });
+  let converted = 0;
+  for (const session of sessions.docs) {
+    const sets = session.sets ?? [];
+    if (!sets.some((s) => s.watchItems?.length && !s.watchPoints?.length)) {
+      continue;
+    }
+    await payload.update({
+      collection: "sessions",
+      id: session.id,
+      data: {
+        sets: sets.map((set) => ({
+          ...set,
+          watchItems: [],
+          watchPoints: set.watchPoints?.length
+            ? set.watchPoints
+            : (set.watchItems ?? []).map((text) => ({ text })),
+        })),
+      },
+    });
+    converted += 1;
+  }
+  if (converted) {
+    payload.logger.info(
+      `Moved watch items to timestamped watch points in ${converted} session(s).`,
+    );
+  }
+}
+
 async function backfillDogAndRoles(
   payload: Awaited<ReturnType<typeof getPayload>>,
   dog: { id: number; name: string },
@@ -170,6 +213,7 @@ async function main() {
   // rather than wait for someone to remember a one-off command.
   const cookie = await ensureDog(payload);
   await backfillDogAndRoles(payload, cookie);
+  await backfillWatchPoints(payload);
 
   const existingExercises = await payload.find({
     collection: "exercises",
@@ -281,10 +325,13 @@ async function main() {
         },
         {
           reps: [6, 6, 6],
-          watchItems: [
-            ["Hesitation before rising"],
+          watchPoints: [
+            [{ text: "Hesitation before rising", atSeconds: 3 }],
             [],
-            ["Left knee flaring", "Weight shifting right"],
+            [
+              { text: "Left knee flaring", atSeconds: 8 },
+              { text: "Weight shifting right" },
+            ],
           ],
           notes: [
             "Slow to commit on the first two reps.",

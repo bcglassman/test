@@ -9,6 +9,7 @@ import { MediaThumb } from "./MediaThumb";
 import {
   formatSessionDate,
   formatSessionTime,
+  formatTimecode,
   resolveRatingDefs,
   setSummary,
 } from "@/lib/session-utils";
@@ -37,8 +38,8 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
   // Flattened so the card can list them all together, each tagged with its set.
   const watchItems = session.sets.flatMap((set) =>
     (set.watchItems ?? [])
-      .filter((text) => text.trim())
-      .map((text) => ({ setNumber: set.setNumber, text })),
+      .filter((w) => w.text.trim())
+      .map((w) => ({ setNumber: set.setNumber, ...w })),
   );
 
   return (
@@ -140,7 +141,14 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
                   <span className="shrink-0 rounded bg-[var(--color-cream)] px-1.5 text-xs leading-5 text-[var(--color-ink-soft)]">
                     Set {w.setNumber}
                   </span>
-                  <span className="leading-5">{w.text}</span>
+                  <span className="leading-5">
+                    {w.text}
+                    {w.atSeconds !== undefined && (
+                      <span className="ml-1.5 tabular-nums text-[var(--color-ink-soft)]">
+                        {formatTimecode(w.atSeconds)}
+                      </span>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -154,14 +162,16 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
             (set) =>
               set.notes ||
               set.ratings.length > 0 ||
-              (set.watchItems ?? []).some((t) => t.trim()) ||
+              (set.watchItems ?? []).some((w) => w.text.trim()) ||
               session.media.some((m) => m.setNumber === set.setNumber),
           )
           .map((set) => {
             const setMedia = session.media
               .filter((m) => m.setNumber === set.setNumber)
               .sort((a, b) => a.order - b.order);
-            const setWatchItems = (set.watchItems ?? []).filter((t) => t.trim());
+            const setWatchItems = (set.watchItems ?? []).filter((w) =>
+              w.text.trim(),
+            );
             const work =
               set.passes !== undefined
                 ? `${set.passes} passes`
@@ -206,7 +216,7 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
                   </dl>
                 )}
                 {set.notes && (
-                  <p className="text-sm leading-relaxed text-[var(--color-ink)]">
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-[var(--color-ink)]">
                     {set.notes}
                   </p>
                 )}
@@ -215,18 +225,26 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
                     which is where you look while watching one back. */}
                 {setWatchItems.length > 0 && (
                   <ul className="flex flex-wrap gap-1.5">
-                    {setWatchItems.map((text, i) => (
+                    {setWatchItems.map((w, i) => (
                       <li
                         key={i}
-                        className="rounded-full bg-[var(--color-cream)] px-2.5 py-1 text-xs text-[var(--color-ink-soft)]"
+                        className="flex items-center gap-1.5 rounded-full bg-[var(--color-cream)] px-2.5 py-1 text-xs text-[var(--color-ink-soft)]"
                       >
-                        {text}
+                        {w.atSeconds !== undefined && (
+                          <span className="rounded bg-[var(--color-sage-tint)] px-1.5 font-semibold tabular-nums text-[var(--color-sage-dark)]">
+                            {formatTimecode(w.atSeconds)}
+                          </span>
+                        )}
+                        {w.text}
                       </li>
                     ))}
                   </ul>
                 )}
                 {setMedia.length > 0 && (
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  // One per row: the caption under a clip is the description
+                  // of what to look for, and at half width it was clipped to
+                  // a few words.
+                  <div className="grid grid-cols-1 gap-4">
                     {setMedia.map((m) => (
                       <MediaThumb key={m.id} media={m} />
                     ))}

@@ -79,7 +79,7 @@ admin area.
   set), rating sliders, notes, and media, with its own upload button. Sets
   can be added and removed; removing one renumbers the rest and moves its
   media rather than orphaning it. Each set also carries short **watch items**
-  ("left knee flaring") and its own media cards, which show the clip beside
+  ("left knee flaring"), each optionally pinned to a time in that set's clip and its own media cards, which show the clip beside
   a roomy notes field, its capture time, and its active-movement seconds.
   Scores step in halves and show what the number means as you drag. Ratings
   can be added, edited or removed per session via a modal — the exercise's
@@ -164,6 +164,12 @@ are in `src/collections/`:
   references Media docs plus per-item `setNumber`/label/notes/order, so every
   clip or photo belongs to a specific set of the session and the feed can
   group them under it.
+- **Watch items** live on the set as `watchPoints` — `{ text, atSeconds }`,
+  where the timestamp is where in that set's clip the thing shows and is
+  optional. They were a plain list of strings before; the old `watchItems`
+  field is kept, hidden, so nothing typed then is lost, and the seed copies
+  it across on deploy (see `backfillWatchPoints` in `src/seed.ts`). The app
+  only ever writes `watchPoints`.
 - **Ratings are stored per set**: each entry in a session's `sets` array
   holds `{ key, score }` pairs alongside that set's reps/passes, notes and
   watch items (see `src/lib/types.ts`'s `SessionSet`). Scores may land on

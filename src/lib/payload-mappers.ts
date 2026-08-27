@@ -19,6 +19,7 @@ import type {
   RatingDefinition,
   SessionSet,
   TrainingSession,
+  WatchItem,
 } from "./types";
 
 /** Relationship rows arrive as either a bare id or the joined document. */
@@ -168,6 +169,25 @@ function mapMediaItem(
   };
 }
 
+/**
+ * Watch items used to be a plain list of strings; they can now carry a
+ * timestamp, so they live in `watchPoints`. Sessions saved before that
+ * still have the old strings, which read as untimed items until the seed's
+ * backfill copies them across.
+ */
+function mapWatchItems(
+  set: NonNullable<PayloadSession["sets"]>[number],
+): WatchItem[] | undefined {
+  if (set.watchPoints?.length) {
+    return set.watchPoints.map((w) => ({
+      text: w.text,
+      atSeconds: w.atSeconds ?? undefined,
+    }));
+  }
+  if (set.watchItems?.length) return set.watchItems.map((text) => ({ text }));
+  return undefined;
+}
+
 function mapSessionSet(
   set: NonNullable<PayloadSession["sets"]>[number],
 ): SessionSet {
@@ -176,7 +196,7 @@ function mapSessionSet(
     reps: set.reps ?? undefined,
     passes: set.passes ?? undefined,
     notes: set.notes ?? undefined,
-    watchItems: set.watchItems ?? undefined,
+    watchItems: mapWatchItems(set),
     ratings: (set.ratings ?? []).map((r) => ({ key: r.key, score: r.score })),
   };
 }
@@ -229,7 +249,15 @@ export function sessionToPayloadBody(session: TrainingSession) {
       reps: s.reps ?? null,
       passes: s.passes ?? null,
       notes: s.notes ?? null,
-      watchItems: s.watchItems ?? [],
+      // Written only to watchPoints; the legacy string list is cleared so
+      // the two can't drift apart.
+      watchItems: [],
+      watchPoints: (s.watchItems ?? [])
+        .filter((w) => w.text.trim())
+        .map((w) => ({
+          text: w.text.trim(),
+          atSeconds: w.atSeconds ?? null,
+        })),
       ratings: s.ratings.map((r) => ({ key: r.key, score: r.score })),
     })),
     ratingDefs: (session.ratingDefs ?? []).map((d) => ({

@@ -128,6 +128,17 @@ export interface RatingScore {
 }
 
 /**
+ * Something to watch for in a set, optionally pinned to a moment in that
+ * set's clip — "left knee flaring" is easier to check when you know it
+ * happens seven seconds in.
+ */
+export interface WatchItem {
+  text: string;
+  /** Seconds into the set's video. Absent when it isn't tied to a moment. */
+  atSeconds?: number;
+}
+
+/**
  * One performed set. Everything that varies set to set lives here — the
  * work done, how it scored, and any note about that specific set. Media
  * belongs to a set too, but is stored on the session (see
@@ -140,7 +151,7 @@ export interface SessionSet {
   passes?: number;
   notes?: string;
   /** Short things to watch for in this set, e.g. "left knee flaring". */
-  watchItems?: string[];
+  watchItems?: WatchItem[];
   ratings: RatingScore[];
 }
 

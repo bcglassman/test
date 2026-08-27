@@ -60,6 +60,28 @@ export function totalActiveMovementSeconds(
   return session.media.reduce((sum, m) => sum + (m.activeMovementSeconds ?? 0), 0);
 }
 
+/** 7 -> "0:07", a position in a clip rather than a length. */
+export function formatTimecode(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/**
+ * "0:07", "07", ":7" or "1:02" -> seconds. Undefined for anything that
+ * isn't a time, including the empty string, which is how a watch item says
+ * it isn't tied to a moment.
+ */
+export function parseTimecode(input: string): number | undefined {
+  const text = input.trim();
+  if (!text) return undefined;
+  const parts = text.split(":");
+  if (parts.length > 2) return undefined;
+  const nums = parts.map((p) => (p === "" ? 0 : Number(p)));
+  if (nums.some((n) => !Number.isFinite(n) || n < 0)) return undefined;
+  const seconds = parts.length === 2 ? nums[0] * 60 + nums[1] : nums[0];
+  return Math.round(seconds);
+}
+
 /** 134 -> "2m 14s"; 45 -> "45s". */
 export function formatDuration(totalSeconds: number): string {
   const seconds = Math.max(0, Math.round(totalSeconds));

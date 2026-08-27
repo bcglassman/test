@@ -65,9 +65,29 @@ export const Sessions: CollectionConfig = {
           type: "text",
           hasMany: true,
           admin: {
+            hidden: true,
             description:
-              'Short things to watch for in this set, e.g. "left knee flaring".',
+              "Superseded by watchPoints, which can carry a timestamp. Kept so sessions saved before that aren't lost; the seed copies them across and the app writes only watchPoints.",
           },
+        },
+        {
+          name: "watchPoints",
+          type: "array",
+          admin: {
+            description:
+              'Short things to watch for in this set, e.g. "left knee flaring", each optionally pinned to a moment in that set\'s video.',
+          },
+          fields: [
+            { name: "text", type: "text", required: true },
+            {
+              name: "atSeconds",
+              type: "number",
+              admin: {
+                description:
+                  "Where in the set's clip this shows, in seconds. Empty when it isn't tied to a moment.",
+              },
+            },
+          ],
         },
         {
           name: "ratings",

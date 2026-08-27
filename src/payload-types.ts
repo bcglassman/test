@@ -287,9 +287,22 @@ export interface Session {
          */
         notes?: string | null;
         /**
-         * Short things to watch for in this set, e.g. "left knee flaring".
+         * Superseded by watchPoints, which can carry a timestamp. Kept so sessions saved before that aren't lost; the seed copies them across and the app writes only watchPoints.
          */
         watchItems?: string[] | null;
+        /**
+         * Short things to watch for in this set, e.g. "left knee flaring", each optionally pinned to a moment in that set's video.
+         */
+        watchPoints?:
+          | {
+              text: string;
+              /**
+               * Where in the set's clip this shows, in seconds. Empty when it isn't tied to a moment.
+               */
+              atSeconds?: number | null;
+              id?: string | null;
+            }[]
+          | null;
         ratings?:
           | {
               key: string;
@@ -540,6 +553,13 @@ export interface SessionsSelect<T extends boolean = true> {
         passes?: T;
         notes?: T;
         watchItems?: T;
+        watchPoints?:
+          | T
+          | {
+              text?: T;
+              atSeconds?: T;
+              id?: T;
+            };
         ratings?:
           | T
           | {

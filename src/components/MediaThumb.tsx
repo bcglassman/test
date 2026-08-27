@@ -210,7 +210,7 @@ export function MediaThumb({ media }: { media: MediaItem }) {
       <figure className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
         <VideoPlayer media={media} />
         {(media.notes || media.capturedAt) && (
-          <figcaption className="px-3 py-2.5 text-sm text-[var(--color-ink-soft)]">
+          <figcaption className="whitespace-pre-line px-3 py-2.5 text-sm text-[var(--color-ink-soft)]">
             {media.notes}
             <CapturedAt iso={media.capturedAt} />
           </figcaption>
@@ -245,7 +245,7 @@ export function MediaThumb({ media }: { media: MediaItem }) {
         {!media.url && <PawIcon className="h-10 w-10 text-white/70" />}
       </div>
       {(media.notes || media.capturedAt) && (
-        <figcaption className="px-3 py-2.5 text-sm text-[var(--color-ink-soft)]">
+        <figcaption className="whitespace-pre-line px-3 py-2.5 text-sm text-[var(--color-ink-soft)]">
           {media.notes}
           <CapturedAt iso={media.capturedAt} />
         </figcaption>
