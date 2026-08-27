@@ -124,7 +124,7 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-ink-soft)]">
               Notes
             </p>
-            <p className="mt-1 text-sm leading-relaxed text-[var(--color-ink)]">
+            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-[var(--color-ink)]">
               {session.notes}
             </p>
           </div>

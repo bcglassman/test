@@ -177,7 +177,14 @@ export const Sessions: CollectionConfig = {
           required: true,
         },
         { name: "label", type: "text" },
-        { name: "notes", type: "text" },
+        {
+          name: "notes",
+          type: "textarea",
+          admin: {
+            description:
+              "What to look for in this clip. Line breaks are kept and shown on the feed.",
+          },
+        },
         { name: "duration", type: "text" },
         {
           name: "activeMovementSeconds",

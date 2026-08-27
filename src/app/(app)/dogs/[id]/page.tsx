@@ -156,7 +156,7 @@ export default function DogProfilePage() {
 
           <Panel title="Movement observations">
             {dog.movementObservations ? (
-              <p>{dog.movementObservations}</p>
+              <p className="whitespace-pre-line">{dog.movementObservations}</p>
             ) : (
               <p className="text-[var(--color-ink-soft)]">
                 Nothing recorded yet.
@@ -178,7 +178,7 @@ export default function DogProfilePage() {
 
           {dog.notes && (
             <Panel title="Notes">
-              <p>{dog.notes}</p>
+              <p className="whitespace-pre-line">{dog.notes}</p>
             </Panel>
           )}
 

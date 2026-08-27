@@ -367,6 +367,9 @@ export interface Session {
         type: 'video' | 'image';
         file: number | Media;
         label?: string | null;
+        /**
+         * What to look for in this clip. Line breaks are kept and shown on the feed.
+         */
         notes?: string | null;
         duration?: string | null;
         /**
