@@ -109,7 +109,16 @@ admin area.
   media rather than orphaning it. Each set also carries short **watch items**
   ("left knee flaring"), each optionally pinned to a time in that set's clip and its own media cards, which show the clip beside
   a roomy notes field, its capture time, and its active-movement seconds.
-  Scores step in halves and show what the number means as you drag. Ratings
+  Scores step in halves and show what the number means as you drag. Set
+  notes and session notes each have a sparkle that tidies the wording with
+  the recorded data in front of it (`src/lib/actions/refine-note.ts`) — a
+  set note gets that set's reps, ratings (with the scale wording, since
+  "Form 2/5" means little without "Noticeable form deterioration") and
+  watch items; a session note gets all of them, plus environment, rest and
+  total active movement. Unlike the watch-item rewrite it *may* draw on
+  that data — those are recorded facts from the same session — but not on
+  anything outside it, and it won't contradict the draft: the handler was
+  there. The previous wording stays behind a Revert. Ratings
   can be added, edited or removed per session via a modal — the exercise's
   dimensions are only a starting template. Above the sets, a sticky
   **Session Summary** shows the aggregate rating and total active movement;

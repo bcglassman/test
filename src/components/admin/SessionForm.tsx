@@ -24,11 +24,14 @@ import { MediaEditorCard } from "./MediaEditorCard";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { RatingDefModal } from "./RatingDefModal";
 import { WatchItemsEditor } from "./WatchItemsEditor";
+import { NoteSparkle } from "./NoteSparkle";
+import type { NoteContext, NoteSetContext } from "@/lib/actions/refine-note";
 import { mediaFromFile } from "@/lib/media-utils";
 import {
   aggregateRatings,
   describeScore,
   formatDuration,
+  formatTimecode,
   resolveRatingDefs,
   sortWatchItems,
   totalActiveMovementSeconds,
@@ -446,6 +449,53 @@ export function SessionForm({
     });
   }
 
+  /**
+   * One set as the rewriter sees it: the work, how it scored and what was
+   * flagged. The rating's scale wording goes along with the number, since
+   * "Form 2/5" means little without "Noticeable form deterioration".
+   */
+  function setContext(set: SessionSet): NoteSetContext {
+    return {
+      setNumber: set.setNumber,
+      reps: set.reps,
+      passes: set.passes,
+      notes: set.notes,
+      watchItems: sortWatchItems(set.watchItems ?? [])
+        .filter((w) => w.text.trim())
+        .map((w) => ({
+          text: w.text,
+          at: w.atSeconds === undefined ? undefined : formatTimecode(w.atSeconds),
+        })),
+      ratings: ratingDefs.flatMap((def) => {
+        const score = set.ratings.find((r) => r.key === def.key)?.score;
+        if (score === undefined) return [];
+        return [
+          {
+            label: def.label,
+            score,
+            max: def.max,
+            meaning: describeScore(def, score),
+          },
+        ];
+      }),
+    };
+  }
+
+  function noteContext(sets: SessionSet[]): NoteContext {
+    return {
+      dogName: dog?.name,
+      dogObservations: dog?.movementObservations,
+      exerciseName: exercise.name,
+      exerciseCategory: exercise.category,
+      exerciseFocus: exercise.focus,
+      environment: form.environment,
+      weather: formatWeather(form.weather),
+      restLabel: form.restLabel,
+      totalActiveMovement: formatDuration(totalActiveSeconds),
+      sets: sets.map(setContext),
+    };
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -671,9 +721,15 @@ export function SessionForm({
                 </div>
               </div>
 
-              <label className="mt-4 block">
-                <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+              <div className="mt-4">
+                <span className="mb-1.5 flex items-center justify-between text-sm font-medium text-[var(--color-ink-soft)]">
                   Session notes
+                  <NoteSparkle
+                    scope="session"
+                    value={form.notes ?? ""}
+                    onChange={(notes) => setForm((f) => ({ ...f, notes }))}
+                    buildContext={() => noteContext(form.sets)}
+                  />
                 </span>
                 <textarea
                   rows={3}
@@ -682,7 +738,7 @@ export function SessionForm({
                   placeholder="How the session went overall"
                   className="w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
                 />
-              </label>
+              </div>
             </div>
           )}
         </div>
@@ -845,9 +901,17 @@ export function SessionForm({
                 </div>
                 )}
 
-                <label className="mt-4 block">
-                  <span className="mb-1.5 block text-xs font-medium text-[var(--color-ink-soft)]">
+                <div className="mt-4">
+                  <span className="mb-1.5 flex items-center justify-between text-xs font-medium text-[var(--color-ink-soft)]">
                     Set notes
+                    <NoteSparkle
+                      scope="set"
+                      value={set.notes ?? ""}
+                      onChange={(notes) =>
+                        updateSet(set.setNumber, { notes })
+                      }
+                      buildContext={() => noteContext([set])}
+                    />
                   </span>
                   <textarea
                     rows={3}
@@ -856,7 +920,7 @@ export function SessionForm({
                     placeholder="What happened in this set specifically"
                     className="min-h-[4.5rem] w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] px-3 py-2 text-sm leading-relaxed outline-none focus:border-[var(--color-sage)]"
                   />
-                </label>
+                </div>
 
                 <div className="mt-4">
                   <span className="mb-2 block text-xs font-medium text-[var(--color-ink-soft)]">
