@@ -47,7 +47,23 @@ function formatPlaybackTime(seconds: number, withTenths: boolean): string {
   return `${mins}:${whole}.${tenths}`;
 }
 
-function VideoPlayer({ media }: { media: MediaItem }) {
+/**
+ * A request to jump to a moment in a clip. The nonce is what makes a
+ * repeat click on the same timestamp land again — the time alone wouldn't
+ * change, so nothing would happen the second time.
+ */
+export interface SeekRequest {
+  seconds: number;
+  nonce: number;
+}
+
+function VideoPlayer({
+  media,
+  seekTo,
+}: {
+  media: MediaItem;
+  seekTo?: SeekRequest | null;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -80,6 +96,38 @@ function VideoPlayer({ media }: { media: MediaItem }) {
 
   // Below 1x you are stepping through frames, so tenths are the useful unit.
   const showTenths = SPEEDS[speedIndex] < 1;
+  // What the scrubber spans, and what the readout counts up to. Never less
+  // than where we already are: WebM from MediaRecorder under-reports its
+  // duration until played through (see onDurationChange below).
+  const scrubMax = Math.max(duration ?? 0, currentTime, 0.1);
+  const progressPercent = Math.min(100, (currentTime / scrubMax) * 100);
+
+  // A watch item was clicked: jump there and play. Keyed on the nonce so
+  // clicking the same timestamp twice works.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !seekTo) return;
+    function jump() {
+      if (!v) return;
+      v.currentTime = seekTo!.seconds;
+      setCurrentTime(seekTo!.seconds);
+      setHasStarted(true);
+      v.play().catch(() => {
+        // Autoplay refused (it shouldn't be — these are muted) — the
+        // position still moved, so the frame is there to look at.
+      });
+    }
+    if (v.readyState >= 1) jump();
+    else v.addEventListener("loadedmetadata", jump, { once: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the nonce is the trigger
+  }, [seekTo?.nonce]);
+
+  function scrub(seconds: number) {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = seconds;
+    setCurrentTime(seconds);
+  }
 
   function togglePlay() {
     const v = videoRef.current;
@@ -157,8 +205,25 @@ function VideoPlayer({ media }: { media: MediaItem }) {
       {hasStarted && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute inset-x-0 bottom-0 flex items-center gap-1 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5"
+          className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-2"
         >
+          {/* Progress is painted as a background gradient rather than left
+              to accent-color, which fills the track inconsistently across
+              browsers. */}
+          <input
+            type="range"
+            min={0}
+            max={scrubMax}
+            step={0.05}
+            value={Math.min(currentTime, scrubMax)}
+            onChange={(e) => scrub(Number(e.target.value))}
+            aria-label="Seek"
+            style={{
+              background: `linear-gradient(to right, rgba(255,255,255,0.9) ${progressPercent}%, rgba(255,255,255,0.28) ${progressPercent}%)`,
+            }}
+            className="mb-1 h-1 w-full cursor-pointer appearance-none rounded-full outline-none [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+          />
+          <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={togglePlay}
@@ -200,7 +265,7 @@ function VideoPlayer({ media }: { media: MediaItem }) {
                 {/* Same precision on both sides, and never a total below
                     where we already are — otherwise 5.9s of a 5.9s clip
                     reads as "0:05.9 / 0:05". See onDurationChange above. */}
-                {formatPlaybackTime(Math.max(duration, currentTime), showTenths)}
+                {formatPlaybackTime(scrubMax, showTenths)}
               </span>
             )}
           </span>
@@ -217,6 +282,7 @@ function VideoPlayer({ media }: { media: MediaItem }) {
               <MaximizeIcon className="h-4 w-4" />
             )}
           </button>
+          </div>
         </div>
       )}
 
@@ -250,11 +316,18 @@ function CapturedAt({ iso }: { iso?: string }) {
   );
 }
 
-export function MediaThumb({ media }: { media: MediaItem }) {
+export function MediaThumb({
+  media,
+  seekTo,
+}: {
+  media: MediaItem;
+  /** Set by a watch item being clicked; ignored by non-video items. */
+  seekTo?: SeekRequest | null;
+}) {
   if (media.url && media.type === "video") {
     return (
       <figure className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-        <VideoPlayer media={media} />
+        <VideoPlayer media={media} seekTo={seekTo} />
         {(media.notes || media.capturedAt) && (
           <figcaption className="whitespace-pre-line px-3 py-2.5 text-sm text-[var(--color-ink-soft)]">
             {media.notes}

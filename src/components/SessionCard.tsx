@@ -1,11 +1,19 @@
-import type { SessionWithExercise } from "@/lib/types";
+"use client";
+
+import { useState } from "react";
+import type {
+  MediaItem,
+  RatingDefinition,
+  SessionSet,
+  SessionWithExercise,
+} from "@/lib/types";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
   CalendarIcon,
   CategoryIcon,
 } from "./icons";
-import { MediaThumb } from "./MediaThumb";
+import { MediaThumb, type SeekRequest } from "./MediaThumb";
 import {
   formatSessionDate,
   formatSessionTime,
@@ -168,96 +176,154 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
               (set.watchItems ?? []).some((w) => w.text.trim()) ||
               session.media.some((m) => m.setNumber === set.setNumber),
           )
-          .map((set) => {
-            const setMedia = session.media
-              .filter((m) => m.setNumber === set.setNumber)
-              .sort((a, b) => a.order - b.order);
-            const setWatchItems = (set.watchItems ?? []).filter((w) =>
-              w.text.trim(),
-            );
-            const work =
-              set.passes !== undefined
-                ? `${set.passes} passes`
-                : set.reps !== undefined
-                  ? `${set.reps} reps`
-                  : undefined;
-            return (
-              // Each set is its own card with a banded header, matching the
-              // set containers in the session form — with several sets, plus
-              // their clips, a run of headings alone didn't separate them.
-              <div
-                key={set.setNumber}
-                className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]"
-              >
-                <div className="flex items-baseline justify-between gap-3 bg-[var(--color-sage-dark)] px-4 py-2.5 text-white">
-                  <h3 className="font-serif text-base leading-none">
-                    Set {set.setNumber}
-                  </h3>
-                  {work && <span className="text-xs text-white/75">{work}</span>}
-                </div>
-                <div className="flex flex-col gap-2.5 p-4">
-                {ratingDefs.length > 0 && (
-                  <dl className="flex flex-wrap gap-x-4 gap-y-1">
-                    {ratingDefs.map((def) => {
-                      const score = set.ratings.find((r) => r.key === def.key)?.score;
-                      if (score === undefined) return null;
-                      return (
-                        <div key={def.key} className="flex gap-1.5 text-sm">
-                          <dt className="text-[var(--color-ink-soft)]">{def.label}</dt>
-                          <dd
-                            className="font-semibold text-[var(--color-ink)]"
-                            title={def.scale?.[Math.round(score) - 1]}
-                          >
-                            {score}
-                            <span className="font-normal text-[var(--color-ink-soft)]">
-                              /{def.max}
-                            </span>
-                          </dd>
-                        </div>
-                      );
-                    })}
-                  </dl>
-                )}
-                {set.notes && (
-                  <p className="whitespace-pre-line text-sm leading-relaxed text-[var(--color-ink)]">
-                    {set.notes}
-                  </p>
-                )}
-                {/* Also listed under Notes on the left, gathered across the
-                    whole session; here they sit with the set and its clips,
-                    which is where you look while watching one back. */}
-                {setWatchItems.length > 0 && (
-                  <ul className="flex flex-wrap gap-1.5">
-                    {setWatchItems.map((w, i) => (
-                      <li
-                        key={i}
-                        className="flex items-center gap-1.5 rounded-full bg-[var(--color-cream)] px-2.5 py-1 text-xs text-[var(--color-ink-soft)]"
-                      >
-                        {w.atSeconds !== undefined && (
-                          <span className="rounded bg-[var(--color-sage-tint)] px-1.5 font-semibold tabular-nums text-[var(--color-sage-dark)]">
-                            {formatTimecode(w.atSeconds)}
-                          </span>
-                        )}
-                        {w.text}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {setMedia.length > 0 && (
-                  // One per row: the caption under a clip is the description
-                  // of what to look for, and at half width it was clipped to
-                  // a few words.
-                  <div className="grid grid-cols-1 gap-4">
-                    {setMedia.map((m) => (
-                      <MediaThumb key={m.id} media={m} />
-                    ))}
-                  </div>
-                )}
-                </div>
-              </div>
-            );
-          })}
+          .map((set) => (
+            <SetBlock
+              key={set.setNumber}
+              set={set}
+              ratingDefs={ratingDefs}
+              media={session.media
+                .filter((m) => m.setNumber === set.setNumber)
+                .sort((a, b) => a.order - b.order)}
+            />
+          ))}
       </div>
     </article>
+  );
+}
+
+/**
+ * One set on the feed: its scores, note, watch items and clips.
+ *
+ * It owns the seek request so a watch item pinned to a moment can jump the
+ * set's clip to it — the timestamp is only useful if you can get there.
+ * A new nonce each click is what makes clicking the same timestamp twice
+ * work, since the seconds alone wouldn't change.
+ */
+function SetBlock({
+  set,
+  ratingDefs,
+  media,
+}: {
+  set: SessionSet;
+  ratingDefs: RatingDefinition[];
+  media: MediaItem[];
+}) {
+  const [seekTo, setSeekTo] = useState<SeekRequest | null>(null);
+  const watchItems = (set.watchItems ?? []).filter((w) => w.text.trim());
+  const work =
+    set.passes !== undefined
+      ? `${set.passes} passes`
+      : set.reps !== undefined
+        ? `${set.reps} reps`
+        : undefined;
+
+  // Timestamps point at the set's clip. With more than one, the first is
+  // the one they mean; with none there is nothing to jump to, so the
+  // timestamp stays a label rather than pretending to be a control.
+  const firstVideoId = media.find((m) => m.type === "video" && m.url)?.id;
+
+  return (
+    // Each set is its own card with a banded header, matching the set
+    // containers in the session form — with several sets, plus their
+    // clips, a run of headings alone didn't separate them.
+    <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]">
+      <div className="flex items-baseline justify-between gap-3 bg-[var(--color-sage-dark)] px-4 py-2.5 text-white">
+        <h3 className="font-serif text-base leading-none">Set {set.setNumber}</h3>
+        {work && <span className="text-xs text-white/75">{work}</span>}
+      </div>
+      <div className="flex flex-col gap-2.5 p-4">
+        {ratingDefs.length > 0 && (
+          <dl className="flex flex-wrap gap-x-4 gap-y-1">
+            {ratingDefs.map((def) => {
+              const score = set.ratings.find((r) => r.key === def.key)?.score;
+              if (score === undefined) return null;
+              return (
+                <div key={def.key} className="flex gap-1.5 text-sm">
+                  <dt className="text-[var(--color-ink-soft)]">{def.label}</dt>
+                  <dd
+                    className="font-semibold text-[var(--color-ink)]"
+                    title={def.scale?.[Math.round(score) - 1]}
+                  >
+                    {score}
+                    <span className="font-normal text-[var(--color-ink-soft)]">
+                      /{def.max}
+                    </span>
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        )}
+
+        {set.notes && (
+          <p className="whitespace-pre-line text-sm leading-relaxed text-[var(--color-ink)]">
+            {set.notes}
+          </p>
+        )}
+
+        {/* Also listed under Notes on the left, gathered across the whole
+            session; here they sit with the set and its clips, which is
+            where you look while watching one back. */}
+        {watchItems.length > 0 && (
+          <ul className="flex flex-wrap gap-1.5">
+            {watchItems.map((w, i) => {
+              const seekable = w.atSeconds !== undefined && firstVideoId;
+              const body = (
+                <>
+                  {w.atSeconds !== undefined && (
+                    <span
+                      className={`rounded bg-[var(--color-sage-tint)] px-1.5 font-semibold tabular-nums text-[var(--color-sage-dark)] ${
+                        seekable ? "group-hover:bg-[var(--color-sage)] group-hover:text-white" : ""
+                      }`}
+                    >
+                      {formatTimecode(w.atSeconds)}
+                    </span>
+                  )}
+                  {w.text}
+                </>
+              );
+              return (
+                <li key={i}>
+                  {seekable ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSeekTo((prev) => ({
+                          seconds: w.atSeconds!,
+                          nonce: (prev?.nonce ?? 0) + 1,
+                        }))
+                      }
+                      title={`Jump to ${formatTimecode(w.atSeconds!)} in this set's clip`}
+                      className="group flex items-center gap-1.5 rounded-full bg-[var(--color-cream)] px-2.5 py-1 text-left text-xs text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-sage-tint)] hover:text-[var(--color-ink)]"
+                    >
+                      {body}
+                    </button>
+                  ) : (
+                    <span className="flex items-center gap-1.5 rounded-full bg-[var(--color-cream)] px-2.5 py-1 text-xs text-[var(--color-ink-soft)]">
+                      {body}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {media.length > 0 && (
+          // One per row: the caption under a clip is the description of
+          // what to look for, and at half width it was clipped to a few
+          // words.
+          <div className="grid grid-cols-1 gap-4">
+            {media.map((m) => (
+              <MediaThumb
+                key={m.id}
+                media={m}
+                seekTo={m.id === firstVideoId ? seekTo : null}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

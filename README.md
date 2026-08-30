@@ -71,10 +71,15 @@ admin area.
   trend vs. the previous session for that same exercise, and its media
   (video/photo) items. Video thumbnails play inline on click, with a small
   control bar for pause, mute (audio starts off), playback speed
-  (1×/0.5×/0.25×/0.1× — the last for frame-by-frame form review), the
-  position in the clip, and maximize (fullscreen). The position reads
-  `0:04 / 0:12`, switching to tenths below 1× where you are stepping
-  frames, and is what a watch item's timestamp is matched against.
+  (1×/0.5×/0.25×/0.1× — the last for frame-by-frame form review), a scrub
+  bar, the position in the clip, and maximize (fullscreen). The position
+  reads `0:04 / 0:12`, switching to tenths below 1× where you are stepping
+  frames. A watch item pinned to a time is a button: clicking it jumps
+  that set's clip to the moment and plays from there. With more than one
+  clip in a set the first is the one it drives; with none, the timestamp
+  stays a plain label rather than a control that does nothing. The
+  session-wide watch list in the left column shows timestamps but isn't
+  clickable — it spans every set, so there's no single clip to drive.
 - **`/sessions` — Sessions.** Requires login. List of all sessions plus a
   form to add or edit one, organised around **sets**: each set is a
   self-contained card holding its own reps (or passes — toggleable per
