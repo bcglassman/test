@@ -235,7 +235,7 @@ export default function DogProfilePage() {
                     </span>
                   )}
                   <span className="ml-auto font-semibold text-[var(--color-ink)]">
-                    {s.overall}/10
+                    {s.overall}/{s.overallMax}
                   </span>
                 </li>
               ))}

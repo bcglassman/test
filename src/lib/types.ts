@@ -122,6 +122,9 @@ export interface Exercise {
   defaultRatings: Omit<RatingDimension, "score">[];
 }
 
+/** A dimension's max when nothing says otherwise — the 1-5 rubric scale. */
+export const DEFAULT_RATING_MAX = 5;
+
 export interface RatingScore {
   key: string;
   score: number;
@@ -202,5 +205,7 @@ export interface SessionWithExercise extends TrainingSession {
   /** Per-dimension scores averaged across ratingSets, joined with the exercise's label/max/scale — see aggregateRatings(). */
   ratings: RatingDimension[];
   overall: number;
+  /** What `overall` is out of — the mean of the dimensions' own maxima. */
+  overallMax: number;
   previousOverall?: number;
 }

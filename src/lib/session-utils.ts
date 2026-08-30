@@ -5,6 +5,7 @@ import type {
   SessionWithExercise,
   TrainingSession,
 } from "./types";
+import { DEFAULT_RATING_MAX } from "./types";
 
 /**
  * Per-dimension scores for a session, averaged across its rating sets and
@@ -135,6 +136,18 @@ export function overallScore(ratings: RatingDimension[]): number {
 }
 
 /**
+ * What `overallScore` is out of. Each dimension carries its own `max` — 5
+ * by default — so the overall, being their mean, is out of the mean of
+ * those maxima. Never assume 10: that was the scale before dimensions had
+ * a max of their own, and it made a 4-out-of-5 session read as 4/10.
+ */
+export function overallMax(ratings: RatingDimension[]): number {
+  if (ratings.length === 0) return DEFAULT_RATING_MAX;
+  const sum = ratings.reduce((acc, r) => acc + r.max, 0);
+  return Math.round(sum / ratings.length) || DEFAULT_RATING_MAX;
+}
+
+/**
  * Joins sessions to their exercise, computes each session's overall score,
  * and — per exercise — the previous session's overall score so the feed can
  * show a trend indicator (see README: "trend, not charts").
@@ -169,6 +182,7 @@ export function withExerciseAndTrend(
       exercise,
       ratings,
       overall: overallScore(ratings),
+      overallMax: overallMax(ratings),
       previousOverall: previous
         ? overallScore(aggregateRatings(previous, exercise))
         : undefined,

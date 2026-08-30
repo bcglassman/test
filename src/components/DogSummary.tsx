@@ -106,7 +106,7 @@ export function DogSummary({
           value={
             stats.averageOverall === undefined
               ? "—"
-              : `${stats.averageOverall}/10`
+              : `${stats.averageOverall}/${stats.averageOverallMax}`
           }
           trend={stats.trend}
         />

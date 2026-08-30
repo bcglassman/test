@@ -46,6 +46,8 @@ export interface DogStats {
   sessionsThisWeek: number;
   /** Mean overall score across every session, rounded to one decimal. */
   averageOverall?: number;
+  /** What `averageOverall` is out of — see overallMax() in session-utils. */
+  averageOverallMax?: number;
   /** Change in mean overall: last 3 sessions vs. the 3 before them. */
   trend?: number;
 }
@@ -77,6 +79,11 @@ export function dogStats(sessions: SessionWithExercise[]): DogStats {
     lastSessionDate: byDateDesc[0].date,
     sessionsThisWeek,
     averageOverall: Math.round(mean(byDateDesc) * 10) / 10,
+    // Sessions can use different rating scales, so the average is out of
+    // the average of what each was scored against.
+    averageOverallMax: Math.round(
+      byDateDesc.reduce((sum, s) => sum + s.overallMax, 0) / byDateDesc.length,
+    ),
     trend,
   };
 }

@@ -68,7 +68,7 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
             Overall
           </span>
           <span className="font-serif text-lg text-[var(--color-ink)]">
-            {session.overall}/10
+            {session.overall}/{session.overallMax}
           </span>
           <Trend current={session.overall} previous={session.previousOverall} />
         </div>
@@ -87,6 +87,9 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
                 </dt>
                 <dd className="text-lg font-semibold text-[var(--color-ink)]">
                   {r.score}
+                  <span className="text-xs font-normal text-[var(--color-ink-soft)]">
+                    /{r.max}
+                  </span>
                 </dd>
               </div>
             );

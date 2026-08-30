@@ -108,7 +108,8 @@ export function SessionsSidebar({
               >
                 <span>
                   <span className="block text-sm font-medium text-[var(--color-ink)]">
-                    {formatSessionDate(s.date)} · {s.exercise.name} · {s.overall}/10
+                    {formatSessionDate(s.date)} · {s.exercise.name} · {s.overall}/
+                    {s.overallMax}
                   </span>
                   <span className="block text-xs text-[var(--color-ink-soft)]">
                     {formatSessionTime(s.date)}

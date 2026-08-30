@@ -180,7 +180,9 @@ are in `src/collections/`:
   `resolveRatingDefs()` falls back to the exercise for sessions saved
   before `ratingDefs` existed, and `aggregateRatings()` averages each
   dimension across the sets; both live in `src/lib/session-utils.ts` and
-  feed the summary bar, the feed cards and the "Overall" score.
+  feed the summary bar, the feed cards and the "Overall" score, which is
+  the mean of those per-dimension scores and is shown out of the mean of
+  their maxima (`overallMax()`) — never out of a fixed 10.
 - **Users** (`src/collections/Users.ts`) — Payload's auth collection, used
   for `/admin` and for gating writes from `/sessions`. Carries a display
   name and a `role` (see "Dogs and roles" above).
