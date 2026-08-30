@@ -123,6 +123,14 @@ admin area.
   typed by hand and given a 1–5 descriptive scale via its own sparkle
   button. Capped at 5 dimensions per exercise so the feed's ratings row
   stays readable. Saving returns you to `/exercises`.
+- **`/dogs/[id]/plan` — Weekly plan.** A calendar of the dog's repeating
+  week: programme categories down, days across, intensity-coloured, with
+  each planned activity's duration, instructions, stop rule and any
+  alternatives. Two views, week by week: **Planned** (what should happen,
+  with Done / Not logged against it) and **Actual** (what was logged, each
+  marked on or off plan). A planned item's *Log* button opens the session
+  form already pointed at that exercise and day. Below `lg` the grid
+  becomes a day-at-a-time list.
 - **`/dogs/[id]` — Dog profile.** The full record for one dog: details,
   training goals, movement observations, restrictions, notes, a breakdown of
   work by exercise, and recent sessions.
@@ -144,6 +152,20 @@ admin area.
 App-level types are in `src/lib/types.ts`; the matching Payload collections
 are in `src/collections/`:
 
+- **Plan** (`src/collections/Plans.ts`) — a dog's repeating training week.
+  A *template*, not a diary: `src/lib/plan-utils.ts` projects it onto real
+  dates, so editing the plan changes what future weeks expect without
+  rewriting what already happened, and no rows are stored per week. Each
+  item carries a day, category, title, detail, duration range, intensity,
+  an `optional` flag, a `stopRule` kept out of the prose because it is the
+  line that says when to stop, alternatives, and an optional link to an
+  exercise. **That link is what makes tracking possible**: a logged session
+  answers a plan item when it falls on the item's day and uses the item's
+  exercise. Items without one — "Kong Wobbler for dinner" — read as *not
+  tracked* rather than missed, since nothing can show they didn't happen.
+  Sessions that answer no plan item are shown *off plan* in the row their
+  exercise maps to, which is how a week that drifted off the schedule
+  becomes visible.
 - **Dog** (`src/collections/Dogs.ts`) — who is being trained: name, photo,
   breed, date of birth, sex, weight, training focus and goals, standing
   movement observations, restrictions, notes, and the accounts recorded as

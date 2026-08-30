@@ -101,12 +101,20 @@ export default function DogProfilePage() {
       <Header />
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-8">
         <div className="mb-6 flex items-center justify-between gap-3">
-          <Link
-            href="/"
-            className="text-sm text-[var(--color-ink-soft)] hover:underline"
-          >
-            ← Feed
-          </Link>
+          <div className="flex items-center gap-4 text-sm">
+            <Link
+              href="/"
+              className="text-[var(--color-ink-soft)] hover:underline"
+            >
+              ← Feed
+            </Link>
+            <Link
+              href={`/dogs/${dog.id}/plan`}
+              className="font-medium text-[var(--color-sage-dark)] hover:underline"
+            >
+              Weekly plan
+            </Link>
+          </div>
           {user && (
             <Link
               href={`/manage/dogs/${dog.id}`}

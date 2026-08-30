@@ -11,6 +11,7 @@ import {
 import type {
   Dog,
   Exercise,
+  Plan,
   SessionWithExercise,
   TrainingSession,
   UserRole,
@@ -20,7 +21,9 @@ import {
   deleteSession as deleteSessionFromStore,
   getDogs,
   getExercises,
+  getPlans,
   getSessions,
+  savePlan as savePlanToStore,
   saveDog as saveDogToStore,
   saveSession as saveSessionToStore,
 } from "./data-source";
@@ -53,6 +56,9 @@ interface SessionsContextValue {
   allDogs: Dog[];
   selectedDog: Dog | null;
   selectDog: (id: string) => void;
+  /** Every dog's plans; the calendar picks the active one for its dog. */
+  plans: Plan[];
+  savePlan: (plan: Plan) => Promise<Plan>;
   loading: boolean;
   saveSession: (session: TrainingSession) => Promise<TrainingSession>;
   deleteSession: (id: string) => Promise<void>;
@@ -73,20 +79,23 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
   const [rawSessions, setRawSessions] = useState<TrainingSession[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [allDogs, setAllDogs] = useState<Dog[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const [s, e, d] = await Promise.all([
+    const [s, e, d, p] = await Promise.all([
       getSessions(),
       getExercises(),
       getDogs(),
+      getPlans(),
     ]);
     setRawSessions(s);
     setExercises(e);
     setAllDogs(d);
+    setPlans(p);
     setLoading(false);
   }, []);
 
@@ -156,6 +165,15 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     [refresh],
   );
 
+  const savePlan = useCallback(
+    async (plan: Plan) => {
+      const saved = await savePlanToStore(plan);
+      await refresh();
+      return saved;
+    },
+    [refresh],
+  );
+
   const deleteDog = useCallback(
     async (id: string) => {
       await deleteDogFromStore(id);
@@ -197,6 +215,8 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
       allDogs,
       selectedDog,
       selectDog,
+      plans,
+      savePlan,
       loading,
       saveSession,
       deleteSession,
@@ -216,6 +236,8 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
       allDogs,
       selectedDog,
       selectDog,
+      plans,
+      savePlan,
       loading,
       saveSession,
       deleteSession,

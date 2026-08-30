@@ -122,6 +122,75 @@ export interface Exercise {
   defaultRatings: Omit<RatingDimension, "score">[];
 }
 
+/** The rows of the weekly plan calendar, in display order. */
+export const PLAN_CATEGORIES = [
+  "cardio",
+  "strength",
+  "flexibility",
+  "bodyAwareness",
+  "enrichment",
+  "sport",
+] as const;
+export type PlanCategory = (typeof PLAN_CATEGORIES)[number];
+
+export const PLAN_CATEGORY_LABELS: Record<PlanCategory, string> = {
+  cardio: "Cardio",
+  strength: "Strength",
+  flexibility: "Flexibility",
+  bodyAwareness: "Body awareness",
+  enrichment: "Enrichment / mental",
+  sport: "Sport / work-specific",
+};
+
+export type PlanIntensity =
+  | "low"
+  | "lowModerate"
+  | "moderate"
+  | "moderateHigh"
+  | "rest";
+
+export const PLAN_INTENSITY_LABELS: Record<PlanIntensity, string> = {
+  low: "Low",
+  lowModerate: "Low–moderate",
+  moderate: "Moderate",
+  moderateHigh: "Moderate–high",
+  rest: "Recovery / rest",
+};
+
+/** One planned activity in a week. */
+export interface PlanItem {
+  id: string;
+  /** 0 = Sunday. */
+  dayOfWeek: number;
+  category: PlanCategory;
+  title: string;
+  detail?: string;
+  durationMinMinutes?: number;
+  durationMaxMinutes?: number;
+  intensity: PlanIntensity;
+  /** Do it if the day allows; never counted as missed. */
+  optional?: boolean;
+  /** When to stop or skip — kept separate so it isn't lost in the detail. */
+  stopRule?: string;
+  alternatives?: { title: string; detail?: string }[];
+  /** Without this the calendar can't tell whether the item was done. */
+  exerciseId?: string;
+  order: number;
+}
+
+/**
+ * A dog's repeating weekly plan. A template: the calendar projects it onto
+ * real dates rather than storing a copy per week.
+ */
+export interface Plan {
+  id: string;
+  name: string;
+  dogId: string;
+  active: boolean;
+  notes?: string;
+  items: PlanItem[];
+}
+
 /** A dimension's max when nothing says otherwise — the 1-5 rubric scale. */
 export const DEFAULT_RATING_MAX = 5;
 

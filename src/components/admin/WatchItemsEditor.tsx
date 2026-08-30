@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import type { WatchItem } from "@/lib/types";
-import { formatTimecode, parseTimecode } from "@/lib/session-utils";
+import {
+  formatTimecode,
+  parseTimecode,
+  sortWatchItems,
+} from "@/lib/session-utils";
 import { CloseIcon, PlusIcon, SparkleIcon } from "../icons";
 import { refineWatchItem } from "@/lib/actions/refine-watch-item";
 
@@ -91,13 +95,14 @@ export function WatchItemsEditor({
                   setDrafts((d) => ({ ...d, [i]: raw }));
                   update(i, { atSeconds: parseTimecode(raw) });
                 }}
-                onBlur={() =>
-                  setDrafts((d) => {
-                    const next = { ...d };
-                    delete next[i];
-                    return next;
-                  })
-                }
+                onBlur={() => {
+                  // Re-order on commit rather than on every keystroke —
+                  // rows shuffling under the cursor while you type a time
+                  // would be unusable. Drafts are keyed by position, so
+                  // they have to go when the positions change.
+                  setDrafts({});
+                  onChange(sortWatchItems(items));
+                }}
                 placeholder="0:07"
                 aria-label={`Video timestamp for watch item ${i + 1}`}
                 title="Where in this set's video it shows, e.g. 0:07"

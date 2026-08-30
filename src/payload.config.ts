@@ -9,6 +9,7 @@ import { Exercises } from "./collections/Exercises";
 import { Sessions } from "./collections/Sessions";
 import { Media } from "./collections/Media";
 import { Dogs } from "./collections/Dogs";
+import { Plans } from "./collections/Plans";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -39,7 +40,7 @@ export default buildConfig({
       titleSuffix: " — Canine Training CMS",
     },
   },
-  collections: [Users, Dogs, Exercises, Sessions, Media],
+  collections: [Users, Dogs, Plans, Exercises, Sessions, Media],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || "",
   typescript: {

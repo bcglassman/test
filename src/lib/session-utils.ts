@@ -4,6 +4,7 @@ import type {
   RatingDimension,
   SessionWithExercise,
   TrainingSession,
+  WatchItem,
 } from "./types";
 import { DEFAULT_RATING_MAX } from "./types";
 
@@ -59,6 +60,25 @@ export function totalActiveMovementSeconds(
   session: Pick<TrainingSession, "media">,
 ): number {
   return session.media.reduce((sum, m) => sum + (m.activeMovementSeconds ?? 0), 0);
+}
+
+/**
+ * Watch items in the order you'd work through them: earliest moment in the
+ * clip first, then the ones not tied to a moment. Stable within each group,
+ * so untimed items keep the order they were written in.
+ */
+export function sortWatchItems(items: WatchItem[]): WatchItem[] {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const at = a.item.atSeconds;
+      const bt = b.item.atSeconds;
+      if (at === undefined && bt === undefined) return a.index - b.index;
+      if (at === undefined) return 1;
+      if (bt === undefined) return -1;
+      return at - bt || a.index - b.index;
+    })
+    .map(({ item }) => item);
 }
 
 /** 7 -> "0:07", a position in a clip rather than a length. */

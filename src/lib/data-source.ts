@@ -1,6 +1,7 @@
 import type {
   User as PayloadUser,
   Dog as PayloadDog,
+  Plan as PayloadPlan,
   Exercise as PayloadExercise,
   Session as PayloadSession,
 } from "@/payload-types";
@@ -8,6 +9,7 @@ import type {
   AppUser,
   Dog,
   Exercise,
+  Plan,
   RatingDimension,
   TrainingSession,
 } from "./types";
@@ -19,7 +21,9 @@ import {
 } from "./payload-client";
 import {
   dogToPayloadBody,
+  mapPlan,
   mapUser,
+  planToPayloadBody,
   exerciseToPayloadBody,
   mapDog,
   mapExercise,
@@ -64,6 +68,22 @@ export async function saveDog(dog: Dog): Promise<Dog> {
 
 export async function deleteDog(id: string): Promise<void> {
   await payloadDelete(`dogs/${id}`);
+}
+
+export async function getPlans(): Promise<Plan[]> {
+  const data = await payloadGet<{ docs: PayloadPlan[] }>(
+    "plans?limit=100&depth=1",
+  );
+  return data.docs.map(mapPlan);
+}
+
+/** Empty id means "not yet created". */
+export async function savePlan(plan: Plan): Promise<Plan> {
+  const body = planToPayloadBody(plan);
+  const { doc } = plan.id
+    ? await payloadPatch<{ doc: PayloadPlan }>(`plans/${plan.id}`, body)
+    : await payloadPost<{ doc: PayloadPlan }>("plans", body);
+  return mapPlan(doc);
 }
 
 export async function getExercises(): Promise<Exercise[]> {

@@ -30,6 +30,7 @@ import {
   describeScore,
   formatDuration,
   resolveRatingDefs,
+  sortWatchItems,
   totalActiveMovementSeconds,
 } from "@/lib/session-utils";
 import {
@@ -113,6 +114,7 @@ export function SessionForm({
   exercises,
   dog,
   session,
+  prefill,
   onSave,
   onCancel,
 }: {
@@ -120,11 +122,22 @@ export function SessionForm({
   /** The dog this session is being logged against; stamped onto new ones. */
   dog: Dog | null;
   session: TrainingSession | null;
+  /** Exercise and date carried over from a plan cell on the calendar. */
+  prefill?: { exerciseId?: string; date?: string } | null;
   onSave: (session: TrainingSession) => Promise<void>;
   onCancel: () => void;
 }) {
   const [form, setForm] = useState<TrainingSession>(() => {
-    if (!session) return blankFromExercise(exercises[0]);
+    if (!session) {
+      const seed =
+        (prefill?.exerciseId &&
+          exercises.find((e) => e.id === prefill.exerciseId)) ||
+        exercises[0];
+      const blank = blankFromExercise(seed);
+      return prefill?.date
+        ? { ...blank, date: toDateTimeLocal(prefill.date) }
+        : blank;
+    }
     const ex = exercises.find((e) => e.id === session.exerciseId) ?? exercises[0];
     const defs = resolveRatingDefs(session, ex);
     const sets = session.sets.length
@@ -440,6 +453,12 @@ export function SessionForm({
     try {
       await onSave({
         ...form,
+        sets: form.sets.map((s) => ({
+          ...s,
+          watchItems: sortWatchItems(
+            (s.watchItems ?? []).filter((w) => w.text.trim()),
+          ),
+        })),
         // An existing session keeps whichever dog it was logged against;
         // a new one belongs to whoever is selected in the header.
         dogId: form.dogId ?? dog?.id,

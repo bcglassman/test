@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { SessionsSidebar } from "@/components/admin/SessionsSidebar";
 import { SessionForm } from "@/components/admin/SessionForm";
@@ -11,7 +12,32 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import type { TrainingSession } from "@/lib/types";
 import { formatSessionDate } from "@/lib/session-utils";
 
+/**
+ * useSearchParams needs a Suspense boundary above it or the page can't be
+ * prerendered — it depends on the request URL, which isn't known at build
+ * time. The fallback is the same "Loading…" the page shows while its data
+ * arrives, so nothing flashes.
+ */
 export default function SessionsAdminPage() {
+  return (
+    <Suspense fallback={<SessionsLoading />}>
+      <SessionsAdminContent />
+    </Suspense>
+  );
+}
+
+function SessionsLoading() {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header active="sessions" />
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16 text-center text-sm text-[var(--color-ink-soft)]">
+        Loading…
+      </main>
+    </div>
+  );
+}
+
+function SessionsAdminContent() {
   const {
     sessions,
     exercises,
@@ -31,6 +57,29 @@ export default function SessionsAdminPage() {
   // clears) even when clicking "Add session" or "Cancel" while already
   // in new mode, where selectedId/mode wouldn't otherwise change.
   const [newFormKey, setNewFormKey] = useState(0);
+
+  // Arriving from a plan cell: "/sessions?exercise=3&date=…&dog=1" opens a
+  // blank form already pointed at that exercise on that day. Held in state
+  // rather than read on every render so that editing the form afterwards
+  // isn't fighting the URL.
+  const searchParams = useSearchParams();
+  const [prefill, setPrefill] = useState<{
+    exerciseId?: string;
+    date?: string;
+  } | null>(null);
+  const prefillExercise = searchParams.get("exercise");
+  const prefillDate = searchParams.get("date");
+  useEffect(() => {
+    if (!prefillExercise && !prefillDate) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading the URL once on arrival
+    setPrefill({
+      exerciseId: prefillExercise ?? undefined,
+      date: prefillDate ?? undefined,
+    });
+    setSelectedId(null);
+    setMode("new");
+    setNewFormKey((k) => k + 1);
+  }, [prefillExercise, prefillDate]);
 
   const selected = sessions.find((s) => s.id === selectedId) ?? null;
   const activeSession: TrainingSession | null =
@@ -53,6 +102,7 @@ export default function SessionsAdminPage() {
       : null;
 
   async function handleSave(session: TrainingSession) {
+    setPrefill(null);
     const isNew = !session.id;
     const saved = await saveSession(session);
     setSelectedId(saved.id);
@@ -162,6 +212,7 @@ export default function SessionsAdminPage() {
           key={mode === "edit" ? selectedId ?? "new" : `new-${newFormKey}`}
           exercises={exercises}
           dog={selectedDog}
+          prefill={mode === "new" ? prefill : null}
           session={activeSession}
           onSave={handleSave}
           onCancel={() => {

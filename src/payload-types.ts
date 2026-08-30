@@ -69,6 +69,7 @@ export interface Config {
   collections: {
     users: User;
     dogs: Dog;
+    plans: Plan;
     exercises: Exercise;
     sessions: Session;
     media: Media;
@@ -81,6 +82,7 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     dogs: DogsSelect<false> | DogsSelect<true>;
+    plans: PlansSelect<false> | PlansSelect<true>;
     exercises: ExercisesSelect<false> | ExercisesSelect<true>;
     sessions: SessionsSelect<false> | SessionsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -227,6 +229,69 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "plans".
+ */
+export interface Plan {
+  id: number;
+  name: string;
+  dog: number | Dog;
+  /**
+   * The plan the calendar shows. Keep one active per dog; older ones stay for the record.
+   */
+  active?: boolean | null;
+  notes?: string | null;
+  /**
+   * One entry per planned activity. Several can share a day and category — the calendar stacks them in that cell.
+   */
+  items?:
+    | {
+        /**
+         * 0 = Sunday, 6 = Saturday.
+         */
+        dayOfWeek: number;
+        category: 'cardio' | 'strength' | 'flexibility' | 'bodyAwareness' | 'enrichment' | 'sport';
+        title: string;
+        /**
+         * How to run it. Line breaks are kept.
+         */
+        detail?: string | null;
+        /**
+         * Planned minutes. Set both for a range like 45-60.
+         */
+        durationMinMinutes?: number | null;
+        durationMaxMinutes?: number | null;
+        intensity: 'low' | 'lowModerate' | 'moderate' | 'moderateHigh' | 'rest';
+        /**
+         * Do it if the day allows; not counted as missed.
+         */
+        optional?: boolean | null;
+        /**
+         * When to stop or skip, e.g. "Stop if gait changes". Shown on its own so it is not lost in the instructions.
+         */
+        stopRule?: string | null;
+        /**
+         * Swaps for this slot — any one of them counts.
+         */
+        alternatives?:
+          | {
+              title: string;
+              detail?: string | null;
+              id?: string | null;
+            }[]
+          | null;
+        /**
+         * Links the plan to the exercise library. Without it the calendar can't tell whether this was done — a logged session is matched to a plan item by day and exercise.
+         */
+        exercise?: (number | null) | Exercise;
+        order?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -420,6 +485,10 @@ export interface PayloadLockedDocument {
         value: number | Dog;
       } | null)
     | ({
+        relationTo: 'plans';
+        value: number | Plan;
+      } | null)
+    | ({
         relationTo: 'exercises';
         value: number | Exercise;
       } | null)
@@ -516,6 +585,41 @@ export interface DogsSelect<T extends boolean = true> {
   owners?: T;
   trainers?: T;
   archived?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "plans_select".
+ */
+export interface PlansSelect<T extends boolean = true> {
+  name?: T;
+  dog?: T;
+  active?: T;
+  notes?: T;
+  items?:
+    | T
+    | {
+        dayOfWeek?: T;
+        category?: T;
+        title?: T;
+        detail?: T;
+        durationMinMinutes?: T;
+        durationMaxMinutes?: T;
+        intensity?: T;
+        optional?: T;
+        stopRule?: T;
+        alternatives?:
+          | T
+          | {
+              title?: T;
+              detail?: T;
+              id?: T;
+            };
+        exercise?: T;
+        order?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }

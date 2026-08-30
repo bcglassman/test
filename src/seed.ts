@@ -192,6 +192,88 @@ async function backfillDogAndRoles(
   }
 }
 
+
+/**
+ * Cookie's weekly plan, transcribed from the planner spreadsheet this
+ * calendar replaced. Only the three seeded exercises can be linked, so the
+ * rest are untracked — the calendar says so rather than calling them
+ * missed.
+ */
+async function seedWeeklyPlan(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  dogId: number,
+  ex: { sitToStand: number; cavaletti: number; treadmill: number },
+) {
+  const existing = await payload.find({
+    collection: "plans",
+    where: { dog: { equals: dogId } },
+    limit: 1,
+  });
+  if (existing.docs.length > 0) return;
+
+  // Sunday = 0.
+  const items = [
+    // --- Cardio ---
+    { dayOfWeek: 0, category: "cardio", title: "Long walk", durationMinMinutes: 45, durationMaxMinutes: 60, intensity: "lowModerate", detail: "Low–moderate intensity." },
+    { dayOfWeek: 2, category: "cardio", title: "Jog/trot intervals", durationMinMinutes: 5, durationMaxMinutes: 10, intensity: "moderate", detail: "→ CONTROLLED SPRINTS: 3 straight sprints with 60–90 sec rest\n→ FREE FETCH with pauses (moderate–high).", stopRule: "Stop before fatigue." },
+    { dayOfWeek: 3, category: "cardio", title: "Easy walk", durationMinMinutes: 20, durationMaxMinutes: 30, intensity: "low", detail: "With optional gentle hill." },
+    { dayOfWeek: 4, category: "cardio", title: "Flat slatmill", durationMinMinutes: 15, durationMaxMinutes: 20, intensity: "lowModerate", optional: true, detail: "Covered outdoor area, endurance focus.", stopRule: "Skip if fatigued from strength work." },
+    { dayOfWeek: 5, category: "cardio", title: "Easy walk", durationMinMinutes: 15, durationMaxMinutes: 20, intensity: "low", detail: "Active recovery before weekend." },
+    { dayOfWeek: 6, category: "cardio", title: "Pool session", durationMinMinutes: 30, intensity: "moderateHigh", detail: "Intervals, supervised. Record active swimming and rest periods." },
+
+    // --- Strength ---
+    { dayOfWeek: 1, category: "strength", title: "Warm-up sit-to-stands", durationMinMinutes: 5, intensity: "low", exercise: ex.sitToStand, detail: "1 set × 4–5 reps on low platform. Use food lure, keep movements slow." },
+    { dayOfWeek: 4, category: "strength", title: "Elevated sit-to-stands", durationMinMinutes: 10, intensity: "lowModerate", exercise: ex.sitToStand, detail: "2 sets × 4–5 reps on low platform. 60 sec rest between sets. Nonslip surface, neutral food position." },
+    { dayOfWeek: 6, category: "strength", title: "Incline carpetmill", durationMinMinutes: 15, intensity: "moderateHigh", exercise: ex.treadmill, detail: "Warm up 30 sec easy → 30–60 sec intervals with rest breaks. Track time per interval.", stopRule: "Stop if gait changes." },
+
+    // --- Flexibility ---
+    { dayOfWeek: 1, category: "flexibility", title: "Active flexibility", durationMinMinutes: 5, intensity: "low", detail: "2 slow nose-to-shoulder + 2 nose-to-hip reaches each side. Part of 10–15 min combined session. Use food lure, do not force." },
+    { dayOfWeek: 2, category: "flexibility", title: "Post-sprint cool-down", durationMinMinutes: 5, durationMaxMinutes: 10, intensity: "low", detail: "2–3 slow nose-to-shoulder & hip reaches each side + PHYSIO MASSAGE around back, shoulders & iliopsoas." },
+    { dayOfWeek: 4, category: "flexibility", title: "Active flexibility", durationMinMinutes: 5, intensity: "lowModerate", detail: "1–2 slow nose-to-shoulder & hip reaches each side. Food-lured, standing on nonslip surface." },
+    { dayOfWeek: 6, category: "flexibility", title: "Post-pool cool-down", durationMinMinutes: 5, durationMaxMinutes: 10, intensity: "low", detail: "2–3 slow nose-to-shoulder & hip reaches each side + PHYSIO MASSAGE around back muscles, shoulder area & iliopsoas. Dry off and cool down before massage." },
+
+    // --- Body awareness ---
+    { dayOfWeek: 1, category: "bodyAwareness", title: "Foundation skills", durationMinMinutes: 10, durationMaxMinutes: 15, intensity: "low", detail: "Food luring, hand target, front/rear-foot targeting, voluntary backing. Quiet area, nonslip surface, slow movements." },
+    { dayOfWeek: 4, category: "bodyAwareness", title: "Low cavaletti", durationMinMinutes: 10, intensity: "lowModerate", exercise: ex.cavaletti, detail: "4 slow passes over 5 straight poles at ~1 ft spacing, lowest height. Use food to guide, record pole contacts." },
+
+    // --- Enrichment / mental ---
+    { dayOfWeek: 0, category: "enrichment", title: "Lick mat or chew", durationMinMinutes: 10, durationMaxMinutes: 15, intensity: "low", detail: "Optional FROZEN KONG. KONG WOBBLER for dinner." },
+    { dayOfWeek: 1, category: "enrichment", title: "'Find it' game", durationMinMinutes: 5, durationMaxMinutes: 10, intensity: "low", optional: true, detail: "Hide treats around room. KONG WOBBLER for dinner." },
+    { dayOfWeek: 2, category: "enrichment", title: "Scatter feeding", durationMinMinutes: 5, intensity: "low", detail: "Toss kibble in grass or on mat. Or KONG WOBBLER for dinner." },
+    { dayOfWeek: 3, category: "enrichment", title: "'Find it' game", durationMinMinutes: 5, durationMaxMinutes: 10, intensity: "low", optional: true, detail: "Hide treats around room. KONG WOBBLER for dinner." },
+    { dayOfWeek: 4, category: "enrichment", title: "Kong Wobbler for dinner", intensity: "low" },
+    { dayOfWeek: 5, category: "enrichment", title: "'Find it' game", durationMinMinutes: 5, durationMaxMinutes: 10, intensity: "low", optional: true, detail: "Hide treats around room. KONG WOBBLER for dinner." },
+    { dayOfWeek: 6, category: "enrichment", title: "Snuffle mat + scatter feeding", durationMinMinutes: 5, durationMaxMinutes: 10, intensity: "low", detail: "Optional FROZEN KONG for calm settling. KONG WOBBLER for dinner." },
+
+    // --- Sport / work-specific ---
+    {
+      dayOfWeek: 6,
+      category: "sport",
+      title: "Alternative to pool intervals and incline carpetmill",
+      intensity: "moderateHigh",
+      optional: true,
+      alternatives: [
+        { title: "Canicross", detail: "20–30 min jog/walk intervals, flat shaded route, early/evening" },
+        { title: "Sleeve work", detail: "15–20 min, short reps with trained helper" },
+        { title: "Casual pool session", detail: "up to 60 min: ~30 min relaxed swim + ~30 min light endurance intervals if energy allows (low–moderate)" },
+      ],
+    },
+  ].map((item, index) => ({ ...item, order: index + 1 }));
+
+  await payload.create({
+    collection: "plans",
+    data: {
+      name: "Cookie Weekly Planner",
+      dog: dogId,
+      active: true,
+      notes: "Transcribed from the original weekly planner spreadsheet.",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the literal unions are checked by the collection on write
+      items: items as any,
+    },
+  });
+  payload.logger.info(`Created weekly plan with ${items.length} items.`);
+}
+
 async function main() {
   const payload = await getPayload({ config });
 
@@ -424,7 +506,15 @@ async function main() {
     },
   });
 
-  payload.logger.info("Seed complete: 1 dog, 3 exercises, 4 sessions, 9 media assets.");
+  await seedWeeklyPlan(payload, seededDog.id, {
+    sitToStand: sitToStand.id,
+    cavaletti: cavaletti.id,
+    treadmill: treadmill.id,
+  });
+
+  payload.logger.info(
+    "Seed complete: 1 dog, 1 weekly plan, 3 exercises, 4 sessions, 9 media assets.",
+  );
   process.exit(0);
 }
 

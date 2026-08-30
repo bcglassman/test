@@ -21,6 +21,7 @@ import {
   formatTimecode,
   resolveRatingDefs,
   setSummary,
+  sortWatchItems,
 } from "@/lib/session-utils";
 import { formatWeather } from "@/lib/weather";
 import { WatchItemsEditor } from "./admin/WatchItemsEditor";
@@ -50,7 +51,7 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
   const ratingDefs = resolveRatingDefs(session, exercise);
   // Flattened so the card can list them all together, each tagged with its set.
   const watchItems = session.sets.flatMap((set) =>
-    (set.watchItems ?? [])
+    sortWatchItems(set.watchItems ?? [])
       .filter((w) => w.text.trim())
       .map((w) => ({ setNumber: set.setNumber, ...w })),
   );
@@ -221,7 +222,9 @@ function SetBlock({
   const [seekTo, setSeekTo] = useState<SeekRequest | null>(null);
   const [draft, setDraft] = useState<WatchItem[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const watchItems = (set.watchItems ?? []).filter((w) => w.text.trim());
+  const watchItems = sortWatchItems(set.watchItems ?? []).filter((w) =>
+    w.text.trim(),
+  );
 
   // Editing writes to the same API the sessions screen does, and that API
   // requires a login (Sessions.access.update). So the check here is the
@@ -236,7 +239,12 @@ function SetBlock({
         ...session,
         sets: session.sets.map((s) =>
           s.setNumber === set.setNumber
-            ? { ...s, watchItems: draft.filter((w) => w.text.trim()) }
+            ? {
+                ...s,
+                watchItems: sortWatchItems(
+                  draft.filter((w) => w.text.trim()),
+                ),
+              }
             : s,
         ),
       });

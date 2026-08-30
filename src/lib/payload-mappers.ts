@@ -6,6 +6,7 @@
 import type {
   User as PayloadUser,
   Dog as PayloadDog,
+  Plan as PayloadPlan,
   Exercise as PayloadExercise,
   Media as PayloadMedia,
   Session as PayloadSession,
@@ -14,6 +15,8 @@ import type {
   AppUser,
   Dog,
   Exercise,
+  Plan,
+  PlanItem,
   MediaItem,
   RatingDimension,
   RatingDefinition,
@@ -89,6 +92,67 @@ export function dogToPayloadBody(dog: Omit<Dog, "id">) {
  */
 function scaleOrUndefined(scale: string[] | null | undefined): string[] | undefined {
   return scale && scale.length > 0 ? scale : undefined;
+}
+
+function relationId(rel: number | { id: number } | null | undefined) {
+  if (rel === null || rel === undefined) return undefined;
+  return String(typeof rel === "number" ? rel : rel.id);
+}
+
+export function mapPlan(doc: PayloadPlan): Plan {
+  return {
+    id: String(doc.id),
+    name: doc.name,
+    dogId: relationId(doc.dog) ?? "",
+    active: doc.active ?? true,
+    notes: doc.notes ?? undefined,
+    items: (doc.items ?? []).map(
+      (item, index): PlanItem => ({
+        id: item.id ?? `row-${index}`,
+        dayOfWeek: item.dayOfWeek,
+        category: item.category,
+        title: item.title,
+        detail: item.detail ?? undefined,
+        durationMinMinutes: item.durationMinMinutes ?? undefined,
+        durationMaxMinutes: item.durationMaxMinutes ?? undefined,
+        intensity: item.intensity,
+        optional: item.optional ?? false,
+        stopRule: item.stopRule ?? undefined,
+        alternatives: (item.alternatives ?? []).map((a) => ({
+          title: a.title,
+          detail: a.detail ?? undefined,
+        })),
+        exerciseId: relationId(item.exercise),
+        order: item.order ?? index,
+      }),
+    ),
+  };
+}
+
+export function planToPayloadBody(plan: Plan) {
+  return {
+    name: plan.name,
+    dog: Number(plan.dogId),
+    active: plan.active,
+    notes: plan.notes ?? null,
+    items: plan.items.map((item) => ({
+      dayOfWeek: item.dayOfWeek,
+      category: item.category,
+      title: item.title,
+      detail: item.detail ?? null,
+      durationMinMinutes: item.durationMinMinutes ?? null,
+      durationMaxMinutes: item.durationMaxMinutes ?? null,
+      intensity: item.intensity,
+      optional: item.optional ?? false,
+      stopRule: item.stopRule ?? null,
+      alternatives: (item.alternatives ?? []).map((a) => ({
+        title: a.title,
+        detail: a.detail ?? null,
+      })),
+      exercise: item.exerciseId ? Number(item.exerciseId) : null,
+      order: item.order,
+    })),
+  };
 }
 
 export function mapExercise(doc: PayloadExercise): Exercise {
