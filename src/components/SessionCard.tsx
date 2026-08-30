@@ -217,7 +217,10 @@ function SetBlock({
   ratingDefs: RatingDefinition[];
   media: MediaItem[];
 }) {
-  const { user, saveSession } = useSessions();
+  const { user, saveSession, allDogs } = useSessions();
+  // Standing notes on how this dog moves, as context for reading frames.
+  const dogObservations = allDogs.find((d) => d.id === session.dogId)
+    ?.movementObservations;
   const { showToast } = useToast();
   const [seekTo, setSeekTo] = useState<SeekRequest | null>(null);
   const [draft, setDraft] = useState<WatchItem[] | null>(null);
@@ -324,6 +327,8 @@ function SetBlock({
               items={draft}
               onChange={setDraft}
               exerciseName={session.exercise.name}
+              videoUrl={media.find((m) => m.type === "video" && m.url)?.url}
+              dogObservations={dogObservations}
               autoFocusLast
             />
             <div className="mt-3 flex items-center gap-2">

@@ -868,6 +868,9 @@ export function SessionForm({
                   <WatchItemsEditor
                     items={set.watchItems ?? []}
                     exerciseName={exercise.name}
+                    videoUrl={
+                      setMedia.find((m) => m.type === "video" && m.url)?.url
+                    }
                     onChange={(watchItems) =>
                       updateSet(set.setNumber, { watchItems })
                     }
