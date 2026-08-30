@@ -80,6 +80,11 @@ admin area.
   stays a plain label rather than a control that does nothing. The
   session-wide watch list in the left column shows timestamps but isn't
   clickable — it spans every set, so there's no single clip to drive.
+  Signed in, each set's watch items can be edited in place on the feed
+  (`WatchItemsEditor`, shared with the session form) without a trip to
+  `/sessions`; signed out the feed is read-only. That gate is the real
+  one — `Sessions.access.update` is `authenticated`, so the API refuses
+  the write either way.
 - **`/sessions` — Sessions.** Requires login. List of all sessions plus a
   form to add or edit one, organised around **sets**: each set is a
   self-contained card holding its own reps (or passes — toggleable per

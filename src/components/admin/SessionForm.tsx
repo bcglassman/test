@@ -6,7 +6,6 @@ import type {
   Dog,
   Exercise,
   MediaItem,
-  WatchItem,
   RatingDefinition,
   SessionSet,
   TrainingSession,
@@ -24,13 +23,12 @@ import {
 import { MediaEditorCard } from "./MediaEditorCard";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { RatingDefModal } from "./RatingDefModal";
+import { WatchItemsEditor } from "./WatchItemsEditor";
 import { mediaFromFile } from "@/lib/media-utils";
 import {
   aggregateRatings,
   describeScore,
   formatDuration,
-  formatTimecode,
-  parseTimecode,
   resolveRatingDefs,
   totalActiveMovementSeconds,
 } from "@/lib/session-utils";
@@ -139,7 +137,6 @@ export function SessionForm({
   const [uploadingSet, setUploadingSet] = useState<number | null>(null);
   const [driveStatus, setDriveStatus] = useState<string | null>(null);
   const driveEnabled = isGoogleDriveConfigured();
-  const [timecodeDrafts, setTimecodeDrafts] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -316,55 +313,6 @@ export function SessionForm({
         })),
       };
     });
-  }
-
-  /** The text shown in a watch item's timecode box while it's being typed. */
-  function timecodeValue(setNumber: number, index: number, item: WatchItem) {
-    const draft = timecodeDrafts[`${setNumber}:${index}`];
-    if (draft !== undefined) return draft;
-    return item.atSeconds === undefined ? "" : formatTimecode(item.atSeconds);
-  }
-
-  function updateWatchItem(
-    setNumber: number,
-    index: number,
-    patch: Partial<WatchItem>,
-  ) {
-    setForm((f) => ({
-      ...f,
-      sets: f.sets.map((s) =>
-        s.setNumber === setNumber
-          ? {
-              ...s,
-              watchItems: (s.watchItems ?? []).map((w, i) =>
-                i === index ? { ...w, ...patch } : w,
-              ),
-            }
-          : s,
-      ),
-    }));
-  }
-
-  function addWatchItem(setNumber: number) {
-    setForm((f) => ({
-      ...f,
-      sets: f.sets.map((s) =>
-        s.setNumber === setNumber
-          ? { ...s, watchItems: [...(s.watchItems ?? []), { text: "" }] }
-          : s,
-      ),
-    }));
-  }
-
-  function removeWatchItem(setNumber: number, index: number) {
-    setForm((f) => ({
-      ...f,
-      sets: f.sets.map((s) =>
-        s.setNumber === setNumber
-          ? { ...s, watchItems: (s.watchItems ?? []).filter((_, i) => i !== index) }
-          : s,
-      ),
-    }));
   }
 
   async function addFilesToSet(
@@ -892,80 +840,18 @@ export function SessionForm({
                 </label>
 
                 <div className="mt-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium text-[var(--color-ink-soft)]">
-                      Watch items
-                      <span className="ml-1.5 font-normal">
-                        · optional time in the clip
-                      </span>
+                  <span className="mb-2 block text-xs font-medium text-[var(--color-ink-soft)]">
+                    Watch items
+                    <span className="ml-1.5 font-normal">
+                      · optional time in the clip
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => addWatchItem(set.setNumber)}
-                      className="flex items-center gap-1 text-xs font-medium text-[var(--color-sage-dark)] hover:underline"
-                    >
-                      <PlusIcon className="h-3 w-3" />
-                      Add
-                    </button>
-                  </div>
-                  {(set.watchItems ?? []).length === 0 ? (
-                    <p className="text-xs text-[var(--color-ink-soft)]">
-                      Nothing flagged for this set.
-                    </p>
-                  ) : (
-                    <ul className="flex flex-col gap-1.5">
-                      {(set.watchItems ?? []).map((item, i) => (
-                        <li key={i} className="flex items-center gap-2">
-                          <input
-                            value={item.text}
-                            onChange={(e) =>
-                              updateWatchItem(set.setNumber, i, {
-                                text: e.target.value,
-                              })
-                            }
-                            maxLength={140}
-                            placeholder="e.g. left knee flaring"
-                            className="min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-cream)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-sage)]"
-                          />
-                          {/* Where in this set's clip it happens. Held as a
-                              draft string while being typed, so "0:" isn't
-                              reformatted to "0:00" under the cursor. */}
-                          <input
-                            value={timecodeValue(set.setNumber, i, item)}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              setTimecodeDrafts((d) => ({
-                                ...d,
-                                [`${set.setNumber}:${i}`]: raw,
-                              }));
-                              updateWatchItem(set.setNumber, i, {
-                                atSeconds: parseTimecode(raw),
-                              });
-                            }}
-                            onBlur={() =>
-                              setTimecodeDrafts((d) => {
-                                const next = { ...d };
-                                delete next[`${set.setNumber}:${i}`];
-                                return next;
-                              })
-                            }
-                            placeholder="0:07"
-                            aria-label={`Video timestamp for watch item ${i + 1}`}
-                            title="Where in this set's video it shows, e.g. 0:07"
-                            className="w-16 shrink-0 rounded-md border border-[var(--color-border)] bg-[var(--color-cream)] px-2 py-1.5 text-center text-sm tabular-nums outline-none focus:border-[var(--color-sage)]"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeWatchItem(set.setNumber, i)}
-                            aria-label={`Remove watch item ${i + 1}`}
-                            className="rounded-md p-1.5 text-[var(--color-ink-soft)] hover:text-[var(--color-down)]"
-                          >
-                            <CloseIcon className="h-3.5 w-3.5" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  </span>
+                  <WatchItemsEditor
+                    items={set.watchItems ?? []}
+                    onChange={(watchItems) =>
+                      updateSet(set.setNumber, { watchItems })
+                    }
+                  />
                 </div>
 
                 <div className="mt-4">

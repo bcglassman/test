@@ -6,6 +6,7 @@ import type {
   RatingDefinition,
   SessionSet,
   SessionWithExercise,
+  WatchItem,
 } from "@/lib/types";
 import {
   ArrowDownIcon,
@@ -22,6 +23,10 @@ import {
   setSummary,
 } from "@/lib/session-utils";
 import { formatWeather } from "@/lib/weather";
+import { WatchItemsEditor } from "./admin/WatchItemsEditor";
+import { useSessions } from "@/lib/sessions-context";
+import { useToast } from "./Toast";
+import { PencilIcon } from "./icons";
 
 function Trend({ current, previous }: { current: number; previous?: number }) {
   if (previous === undefined || previous === current) return null;
@@ -179,6 +184,7 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
           .map((set) => (
             <SetBlock
               key={set.setNumber}
+              session={session}
               set={set}
               ratingDefs={ratingDefs}
               media={session.media
@@ -200,16 +206,48 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
  * work, since the seconds alone wouldn't change.
  */
 function SetBlock({
+  session,
   set,
   ratingDefs,
   media,
 }: {
+  session: SessionWithExercise;
   set: SessionSet;
   ratingDefs: RatingDefinition[];
   media: MediaItem[];
 }) {
+  const { user, saveSession } = useSessions();
+  const { showToast } = useToast();
   const [seekTo, setSeekTo] = useState<SeekRequest | null>(null);
+  const [draft, setDraft] = useState<WatchItem[] | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const watchItems = (set.watchItems ?? []).filter((w) => w.text.trim());
+
+  // Editing writes to the same API the sessions screen does, and that API
+  // requires a login (Sessions.access.update). So the check here is the
+  // real one, not decoration: a signed-out visitor reads the feed.
+  const canEdit = Boolean(user);
+
+  async function saveWatchItems() {
+    if (!draft) return;
+    setIsSaving(true);
+    try {
+      await saveSession({
+        ...session,
+        sets: session.sets.map((s) =>
+          s.setNumber === set.setNumber
+            ? { ...s, watchItems: draft.filter((w) => w.text.trim()) }
+            : s,
+        ),
+      });
+      setDraft(null);
+      showToast("Watch items saved");
+    } catch {
+      showToast("Couldn't save — check you're still logged in.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
   const work =
     set.passes !== undefined
       ? `${set.passes} passes`
@@ -263,9 +301,50 @@ function SetBlock({
 
         {/* Also listed under Notes on the left, gathered across the whole
             session; here they sit with the set and its clips, which is
-            where you look while watching one back. */}
-        {watchItems.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5">
+            where you look while watching one back. Editable in place, so
+            noticing something while watching doesn't mean a trip to the
+            sessions screen. */}
+        {draft !== null ? (
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] p-3">
+            <span className="mb-2 block text-xs font-medium text-[var(--color-ink-soft)]">
+              Watch items
+              <span className="ml-1.5 font-normal">
+                · optional time in the clip
+              </span>
+            </span>
+            <WatchItemsEditor items={draft} onChange={setDraft} autoFocusLast />
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={saveWatchItems}
+                disabled={isSaving}
+                className="rounded-full bg-[var(--color-sage)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--color-sage-dark)] disabled:opacity-60"
+              >
+                {isSaving ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraft(null)}
+                className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-xs font-medium text-[var(--color-ink)] hover:bg-white"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          (watchItems.length > 0 || canEdit) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setDraft(set.watchItems ?? [])}
+                  className="flex items-center gap-1 rounded-full border border-dashed border-[var(--color-border)] px-2.5 py-1 text-xs font-medium text-[var(--color-ink-soft)] hover:border-[var(--color-sage)] hover:text-[var(--color-ink)]"
+                >
+                  <PencilIcon className="h-3 w-3" />
+                  {watchItems.length > 0 ? "Edit watch items" : "Add watch item"}
+                </button>
+              )}
+              <ul className="flex flex-wrap gap-1.5">
             {watchItems.map((w, i) => {
               const seekable = w.atSeconds !== undefined && firstVideoId;
               const body = (
@@ -306,7 +385,9 @@ function SetBlock({
                 </li>
               );
             })}
-          </ul>
+              </ul>
+            </div>
+          )
         )}
 
         {media.length > 0 && (
