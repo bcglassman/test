@@ -312,7 +312,12 @@ function SetBlock({
                 · optional time in the clip
               </span>
             </span>
-            <WatchItemsEditor items={draft} onChange={setDraft} autoFocusLast />
+            <WatchItemsEditor
+              items={draft}
+              onChange={setDraft}
+              exerciseName={session.exercise.name}
+              autoFocusLast
+            />
             <div className="mt-3 flex items-center gap-2">
               <button
                 type="button"

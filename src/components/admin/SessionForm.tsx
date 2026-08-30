@@ -848,6 +848,7 @@ export function SessionForm({
                   </span>
                   <WatchItemsEditor
                     items={set.watchItems ?? []}
+                    exerciseName={exercise.name}
                     onChange={(watchItems) =>
                       updateSet(set.setNumber, { watchItems })
                     }

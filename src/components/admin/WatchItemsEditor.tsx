@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { WatchItem } from "@/lib/types";
 import { formatTimecode, parseTimecode } from "@/lib/session-utils";
-import { CloseIcon, PlusIcon } from "../icons";
+import { CloseIcon, PlusIcon, SparkleIcon } from "../icons";
+import { refineWatchItem } from "@/lib/actions/refine-watch-item";
 
 /**
  * The rows for editing a set's watch items — short things to look for,
@@ -17,15 +18,23 @@ export function WatchItemsEditor({
   items,
   onChange,
   autoFocusLast = false,
+  exerciseName,
 }: {
   items: WatchItem[];
   onChange: (items: WatchItem[]) => void;
   /** Focus a freshly added row — useful when adding is the way in. */
   autoFocusLast?: boolean;
+  /** Context for the AI rewrite; it words things better knowing the exercise. */
+  exerciseName?: string;
 }) {
   // What each timecode box shows while it's being typed. Without this,
   // "0:" would be parsed to 0 and reformatted to "0:00" under the cursor.
   const [drafts, setDrafts] = useState<Record<number, string>>({});
+  const [refiningIndex, setRefiningIndex] = useState<number | null>(null);
+  // What each row said before the AI rewrote it, so a bad rewrite is one
+  // click away from being put back.
+  const [beforeRefine, setBeforeRefine] = useState<Record<number, string>>({});
+  const [error, setError] = useState<string | null>(null);
 
   function timecodeValue(index: number, item: WatchItem) {
     const draft = drafts[index];
@@ -37,6 +46,25 @@ export function WatchItemsEditor({
     onChange(items.map((w, i) => (i === index ? { ...w, ...patch } : w)));
   }
 
+  async function refine(index: number) {
+    const original = items[index].text.trim();
+    if (!original) {
+      setError("Write the observation first, then refine it.");
+      return;
+    }
+    setError(null);
+    setRefiningIndex(index);
+    try {
+      const rewritten = await refineWatchItem(original, exerciseName);
+      setBeforeRefine((b) => ({ ...b, [index]: original }));
+      update(index, { text: rewritten });
+    } catch {
+      setError("Couldn't reach the AI. Your wording is unchanged.");
+    } finally {
+      setRefiningIndex(null);
+    }
+  }
+
   return (
     <div>
       {items.length === 0 ? (
@@ -46,7 +74,8 @@ export function WatchItemsEditor({
       ) : (
         <ul className="flex flex-col gap-1.5">
           {items.map((item, i) => (
-            <li key={i} className="flex items-center gap-2">
+            <li key={i} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
               <input
                 value={item.text}
                 onChange={(e) => update(i, { text: e.target.value })}
@@ -76,10 +105,23 @@ export function WatchItemsEditor({
               />
               <button
                 type="button"
+                onClick={() => refine(i)}
+                disabled={refiningIndex !== null}
+                aria-label={`Reword watch item ${i + 1}`}
+                title="Reword in canine-rehab terminology — says the same thing, in the field's vocabulary"
+                className="rounded-md p-1.5 text-[var(--color-sage-dark)] hover:bg-[var(--color-sage-tint)] disabled:opacity-50"
+              >
+                <SparkleIcon
+                  className={`h-4 w-4 ${refiningIndex === i ? "animate-spin" : ""}`}
+                />
+              </button>
+              <button
+                type="button"
                 onClick={() => {
-                  // Drafts are keyed by position, so they'd point at the
-                  // wrong rows once one is removed.
+                  // Drafts and undo text are keyed by position, so they'd
+                  // point at the wrong rows once one is removed.
                   setDrafts({});
+                  setBeforeRefine({});
                   onChange(items.filter((_, j) => j !== i));
                 }}
                 aria-label={`Remove watch item ${i + 1}`}
@@ -87,9 +129,35 @@ export function WatchItemsEditor({
               >
                 <CloseIcon className="h-3.5 w-3.5" />
               </button>
+              </div>
+              {beforeRefine[i] !== undefined &&
+                beforeRefine[i] !== item.text && (
+                  <p className="pl-1 text-xs text-[var(--color-ink-soft)]">
+                    Was: &ldquo;{beforeRefine[i]}&rdquo;{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        update(i, { text: beforeRefine[i] });
+                        setBeforeRefine((b) => {
+                          const next = { ...b };
+                          delete next[i];
+                          return next;
+                        });
+                      }}
+                      className="font-medium text-[var(--color-sage-dark)] hover:underline"
+                    >
+                      Undo
+                    </button>
+                  </p>
+                )}
             </li>
           ))}
         </ul>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 text-xs text-[var(--color-down)]">
+          {error}
+        </p>
       )}
       <button
         type="button"

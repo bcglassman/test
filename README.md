@@ -82,7 +82,12 @@ admin area.
   clickable — it spans every set, so there's no single clip to drive.
   Signed in, each set's watch items can be edited in place on the feed
   (`WatchItemsEditor`, shared with the session form) without a trip to
-  `/sessions`; signed out the feed is read-only. That gate is the real
+  `/sessions`; signed out the feed is read-only. Each row has a sparkle
+  button that rewords the observation in canine-rehab terminology
+  (`src/lib/actions/refine-watch-item.ts`), with the original kept for a
+  one-click undo. It rewords only — the prompt forbids adding a severity,
+  cause, side or body part that wasn't in the original, because the note
+  is a record of what someone saw and a vet may read it later. That gate is the real
   one — `Sessions.access.update` is `authenticated`, so the API refuses
   the write either way.
 - **`/sessions` — Sessions.** Requires login. List of all sessions plus a
