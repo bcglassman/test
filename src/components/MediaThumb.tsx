@@ -30,11 +30,30 @@ function gradientFor(seed: string) {
 // ~0.5x anyway, which is fine here since clips start muted.
 const SPEEDS = [1, 0.5, 0.25, 0.1];
 
+function finiteDuration(video: HTMLVideoElement): number | undefined {
+  return Number.isFinite(video.duration) && video.duration > 0
+    ? video.duration
+    : undefined;
+}
+
+/** 8.42 -> "0:08", or "0:08.4" when tenths matter (slow-motion review). */
+function formatPlaybackTime(seconds: number, withTenths: boolean): string {
+  const safe = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+  const mins = Math.floor(safe / 60);
+  const secs = safe - mins * 60;
+  const whole = String(Math.floor(secs)).padStart(2, "0");
+  if (!withTenths) return `${mins}:${whole}`;
+  const tenths = Math.floor((secs - Math.floor(secs)) * 10);
+  return `${mins}:${whole}.${tenths}`;
+}
+
 function VideoPlayer({ media }: { media: MediaItem }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState<number | undefined>(undefined);
   const [speedIndex, setSpeedIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   // Audio starts off: the feed can show several clips at once, and these are
@@ -58,6 +77,9 @@ function VideoPlayer({ media }: { media: MediaItem }) {
   useEffect(() => {
     if (videoRef.current) videoRef.current.muted = isMuted;
   }, [isMuted]);
+
+  // Below 1x you are stepping through frames, so tenths are the useful unit.
+  const showTenths = SPEEDS[speedIndex] < 1;
 
   function togglePlay() {
     const v = videoRef.current;
@@ -104,6 +126,15 @@ function VideoPlayer({ media }: { media: MediaItem }) {
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
+        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+        // A stream the browser reports as unbounded has no duration to
+        // show. WebM written by MediaRecorder — which is what the uploader
+        // produces (see video-compress.ts) — often reports a short or
+        // infinite duration until the browser has played through it, and
+        // refines it later, so take the update whenever it comes.
+        onLoadedMetadata={(e) => setDuration(finiteDuration(e.currentTarget))}
+        onDurationChange={(e) => setDuration(finiteDuration(e.currentTarget))}
+        onSeeked={(e) => setCurrentTime(e.currentTarget.currentTime)}
         onClick={togglePlay}
         className={`absolute inset-0 h-full w-full cursor-pointer ${
           isFullscreen ? "object-contain" : "object-cover"
@@ -158,6 +189,21 @@ function VideoPlayer({ media }: { media: MediaItem }) {
           >
             {SPEEDS[speedIndex]}×
           </button>
+          {/* Where you are in the clip. Watch items are pinned to a time,
+              so this is what you match them against. Below 1x it shows
+              tenths, since that is the speed you step frames at. */}
+          <span className="ml-1 select-none font-mono text-xs tabular-nums text-white/90">
+            {formatPlaybackTime(currentTime, showTenths)}
+            {duration !== undefined && (
+              <span className="text-white/55">
+                {" / "}
+                {/* Same precision on both sides, and never a total below
+                    where we already are — otherwise 5.9s of a 5.9s clip
+                    reads as "0:05.9 / 0:05". See onDurationChange above. */}
+                {formatPlaybackTime(Math.max(duration, currentTime), showTenths)}
+              </span>
+            )}
+          </span>
           <div className="flex-1" />
           <button
             type="button"
