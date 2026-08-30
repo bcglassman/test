@@ -85,11 +85,22 @@ admin area.
   `/sessions`; signed out the feed is read-only. Each row has a sparkle
   button that rewords the observation in canine-rehab terminology
   (`src/lib/actions/refine-watch-item.ts`), with the original kept for a
-  one-click undo. It rewords only — the prompt forbids adding a severity,
-  cause, side or body part that wasn't in the original, because the note
-  is a record of what someone saw and a vet may read it later. That gate is the real
-  one — `Sessions.access.update` is `authenticated`, so the API refuses
-  the write either way.
+  one-click undo. A row with a timestamp also gets a frames button: it
+  samples seven stills either side of that moment from the set's clip in
+  the browser (`src/lib/video-frames.ts` — no server-side transcoding, the
+  droplet couldn't afford it) and asks what is visible there
+  (`src/lib/actions/suggest-watch-item.ts`). The frames themselves, a
+  confidence, and what the frames *cannot* settle are all shown next to
+  the accept button, because a handful of stills from one uncontrolled
+  camera angle is thin evidence and a fluent sentence hides that.
+
+  Both are wording aids, not findings: the prompts forbid adding a
+  severity, cause, side or body part the evidence doesn't carry, and the
+  frame reader is told that "nothing clearly visible at this moment" is a
+  correct answer. Nothing either produces reaches a note until a person
+  accepts it — the note is a record of what someone saw, and a vet may
+  read it later. The edit gate is the real one — `Sessions.access.update`
+  is `authenticated`, so the API refuses the write either way.
 - **`/sessions` — Sessions.** Requires login. List of all sessions plus a
   form to add or edit one, organised around **sets**: each set is a
   self-contained card holding its own reps (or passes — toggleable per
