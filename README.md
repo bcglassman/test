@@ -37,12 +37,14 @@ to prepare for one.
 | `docs/directus-setup.md` | Running the stack, and what the bootstrap configures |
 | `docs/worker.md` | Ingest guarantees, the Eventbrite adapter, and how to add a source |
 | `docs/channel-copy.md` | Per-channel copy generation, validation and the repair round |
+| `docs/deployment.md` | Running it on DigitalOcean App Platform |
 | `schema/001_init.sql` | Postgres DDL for the core model, Directus-compatible |
 | `schema/002_accounts_and_supply.sql` | Accounts, interests, social proof, submissions, organiser claims |
 | `schema/003_assisted_publish_and_coaches.sql` | Assisted publishing state, coach directory and enquiries |
 | `schema/004_variant_notes.sql` | Why a generated variant was rejected |
 | `schema/tests/` | Executable checks for the invariants the migrations enforce |
 | `docker-compose.yml` | Postgres, Redis and Directus for local development |
+| `.do/app.yaml` | DigitalOcean App Platform spec — services, scheduled jobs, database |
 | `directus/bootstrap/` | Idempotent script registering collections, field interfaces and access policies |
 | `worker/` | Ingest, enrichment and publishing — kept outside Directus |
 

@@ -1,0 +1,293 @@
+# Meet in Motion — DigitalOcean App Platform spec
+#
+#   doctl apps create --spec .do/app.yaml
+#   doctl apps update <app-id> --spec .do/app.yaml
+#
+# Everything runs here: Directus, the worker's scheduled jobs, the public site,
+# and a managed Postgres. See docs/deployment.md for the parts that are not in
+# this file — Spaces credentials, the first admin login, DNS.
+#
+# Instance size slugs change over time. Check what is current with:
+#   doctl apps tier instance-size list
+
+name: meet-in-motion
+region: sgp        # Singapore. The audience, the data and the database all sit here.
+
+databases:
+  - name: mim-db
+    engine: PG
+    version: "16"
+    production: true
+    cluster_name: mim-db
+
+services:
+  # ---------------------------------------------------------------------------
+  # Directus — the content model, editorial surface and API.
+  # Runs the official image; the schema is owned by schema/*.sql, never by
+  # Directus (SCHEMA_CHANGES=none).
+  # ---------------------------------------------------------------------------
+  - name: directus
+    image:
+      registry_type: DOCKER_HUB
+      registry: directus
+      repository: directus
+      tag: "11"
+    http_port: 8055
+    instance_count: 1          # see docs/deployment.md before raising this
+    instance_size_slug: apps-s-1vcpu-1gb
+    health_check:
+      http_path: /server/health
+      initial_delay_seconds: 30
+      period_seconds: 30
+    routes:
+      - path: /admin
+    envs:
+      - key: SECRET
+        scope: RUN_TIME
+        type: SECRET
+      - key: ADMIN_EMAIL
+        scope: RUN_TIME
+        type: SECRET
+      - key: ADMIN_PASSWORD
+        scope: RUN_TIME
+        type: SECRET
+
+      - key: DB_CLIENT
+        scope: RUN_TIME
+        value: pg
+      - key: DB_CONNECTION_STRING
+        scope: RUN_TIME
+        value: ${mim-db.DATABASE_URL}
+      - key: DB_SSL__REJECT_UNAUTHORIZED
+        scope: RUN_TIME
+        value: "false"          # DO managed Postgres presents its own CA
+
+      # The migrations own the tables. Directus must never reshape them.
+      - key: SCHEMA_CHANGES
+        scope: RUN_TIME
+        value: "none"
+
+      # Container disk is ephemeral: uploads MUST go to Spaces or they vanish
+      # on every deploy.
+      - key: STORAGE_LOCATIONS
+        scope: RUN_TIME
+        value: spaces
+      - key: STORAGE_SPACES_DRIVER
+        scope: RUN_TIME
+        value: s3
+      - key: STORAGE_SPACES_ROOT
+        scope: RUN_TIME
+        value: uploads
+      - key: STORAGE_SPACES_BUCKET
+        scope: RUN_TIME
+        value: mim-media
+      - key: STORAGE_SPACES_REGION
+        scope: RUN_TIME
+        value: sgp1
+      - key: STORAGE_SPACES_ENDPOINT
+        scope: RUN_TIME
+        value: https://sgp1.digitaloceanspaces.com
+      - key: STORAGE_SPACES_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: STORAGE_SPACES_SECRET
+        scope: RUN_TIME
+        type: SECRET
+
+      - key: PUBLIC_URL
+        scope: RUN_TIME
+        value: ${APP_URL}/admin
+      - key: CORS_ENABLED
+        scope: RUN_TIME
+        value: "true"
+      - key: CORS_ORIGIN
+        scope: RUN_TIME
+        value: ${APP_URL}
+
+  # ---------------------------------------------------------------------------
+  # The public site.
+  #
+  # NOT YET BUILT. Uncomment once worker/../site exists; until then App Platform
+  # would fail the deploy looking for a directory that is not there.
+  # ---------------------------------------------------------------------------
+  # - name: web
+  #   github:
+  #     repo: bcglassman/test
+  #     branch: main
+  #     deploy_on_push: true
+  #   source_dir: /site
+  #   build_command: npm run build
+  #   run_command: npm start
+  #   http_port: 3000
+  #   instance_count: 1
+  #   instance_size_slug: apps-s-1vcpu-1gb
+  #   routes:
+  #     - path: /
+  #   envs:
+  #     - key: DIRECTUS_URL
+  #       scope: RUN_AND_BUILD_TIME
+  #       value: ${APP_URL}/admin
+  #     - key: DIRECTUS_TOKEN
+  #       scope: RUN_AND_BUILD_TIME
+  #       type: SECRET
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Schema migrations, before anything serves traffic.
+  # ---------------------------------------------------------------------------
+  - name: migrate
+    kind: PRE_DEPLOY
+    github:
+      repo: bcglassman/test
+      branch: main
+      deploy_on_push: true
+    source_dir: /worker
+    run_command: node src/migrate.mjs
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${mim-db.DATABASE_URL}
+
+  # ---------------------------------------------------------------------------
+  # The daily pipeline. Each step reads what the previous one produced, so the
+  # times are staggered rather than arbitrary.
+  #
+  # Scheduled jobs are billed only while running, and are capped at 30 minutes —
+  # keep --limit values inside that. Minimum interval is every 15 minutes.
+  # ---------------------------------------------------------------------------
+  - name: ingest
+    kind: SCHEDULED
+    schedule:
+      cron: "0 2 * * *"
+      time_zone: Asia/Singapore
+    github:
+      repo: bcglassman/test
+      branch: main
+      deploy_on_push: true
+    source_dir: /worker
+    run_command: node src/index.mjs ingest
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${mim-db.DATABASE_URL}
+      - key: EVENTBRITE_TOKEN
+        scope: RUN_TIME
+        type: SECRET
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: SITE_URL
+        scope: RUN_TIME
+        value: ${APP_URL}
+
+  - name: enrich
+    kind: SCHEDULED
+    schedule:
+      cron: "0 3 * * *"
+      time_zone: Asia/Singapore
+    github:
+      repo: bcglassman/test
+      branch: main
+      deploy_on_push: true
+    source_dir: /worker
+    run_command: node src/index.mjs enrich --limit 30
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${mim-db.DATABASE_URL}
+      - key: EVENTBRITE_TOKEN
+        scope: RUN_TIME
+        type: SECRET
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: SITE_URL
+        scope: RUN_TIME
+        value: ${APP_URL}
+
+  - name: schedule-posts
+    kind: SCHEDULED
+    schedule:
+      cron: "0 4 * * *"
+      time_zone: Asia/Singapore
+    github:
+      repo: bcglassman/test
+      branch: main
+      deploy_on_push: true
+    source_dir: /worker
+    run_command: node src/index.mjs schedule --days 4
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${mim-db.DATABASE_URL}
+      - key: EVENTBRITE_TOKEN
+        scope: RUN_TIME
+        type: SECRET
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: SITE_URL
+        scope: RUN_TIME
+        value: ${APP_URL}
+
+  - name: variants
+    kind: SCHEDULED
+    schedule:
+      cron: "0 5 * * *"
+      time_zone: Asia/Singapore
+    github:
+      repo: bcglassman/test
+      branch: main
+      deploy_on_push: true
+    source_dir: /worker
+    run_command: node src/index.mjs variants --limit 20
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${mim-db.DATABASE_URL}
+      - key: EVENTBRITE_TOKEN
+        scope: RUN_TIME
+        type: SECRET
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: SITE_URL
+        scope: RUN_TIME
+        value: ${APP_URL}
+
+  # Exits non-zero when a slot is unfilled, so a failed run is the alert
+  # that nothing goes out that day.
+  - name: gap-check
+    kind: SCHEDULED
+    schedule:
+      cron: "30 5 * * *"
+      time_zone: Asia/Singapore
+    github:
+      repo: bcglassman/test
+      branch: main
+      deploy_on_push: true
+    source_dir: /worker
+    run_command: node src/index.mjs gaps --days 5
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${mim-db.DATABASE_URL}
+      - key: EVENTBRITE_TOKEN
+        scope: RUN_TIME
+        type: SECRET
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: SITE_URL
+        scope: RUN_TIME
+        value: ${APP_URL}
+
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED
