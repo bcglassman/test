@@ -1,0 +1,14 @@
+{
+  "name": "mim-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Ingest, enrichment and publishing for Meet in Motion. Kept out of Directus so a broken scraper cannot take the CMS down with it.",
+  "scripts": {
+    "ingest": "node src/index.mjs ingest",
+    "sources": "node src/index.mjs sources",
+    "test": "node --test 'test/*.test.mjs'"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": { "pg": "^8.13.0" }
+}

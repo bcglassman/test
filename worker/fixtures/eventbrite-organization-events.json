@@ -1,0 +1,64 @@
+{
+  "pagination": { "object_count": 3, "page_number": 1, "has_more_items": false },
+  "events": [
+    {
+      "id": "987654321098",
+      "name": { "text": "East Coast Sunrise 10K", "html": "East Coast Sunrise 10K" },
+      "summary": "A friendly 10K along the park connector. All paces welcome, kopi after.",
+      "description": { "text": "A friendly 10K along the East Coast park connector. All paces welcome — we split into three pace groups and nobody gets left behind. Kopi at the hawker centre afterwards for anyone who wants it." },
+      "url": "https://www.eventbrite.sg/e/east-coast-sunrise-10k-tickets-987654321098",
+      "start": { "timezone": "Asia/Singapore", "local": "2026-09-12T07:00:00", "utc": "2026-09-11T23:00:00Z" },
+      "end":   { "timezone": "Asia/Singapore", "local": "2026-09-12T09:30:00", "utc": "2026-09-12T01:30:00Z" },
+      "status": "live",
+      "currency": "SGD",
+      "online_event": false,
+      "is_free": false,
+      "capacity": 120,
+      "category_id": "108",
+      "logo": { "url": "https://img.evbuc.example/thumb.jpg", "original": { "url": "https://img.evbuc.example/original.jpg" } },
+      "organizer": {
+        "id": "55501",
+        "name": "East Coast Run Club",
+        "description": { "text": "Weekly runs along the East Coast since 2019." },
+        "website": "https://ecrc.example.sg"
+      },
+      "venue": {
+        "id": "77701",
+        "name": "East Coast Park Area C",
+        "address": {
+          "localized_address_display": "920 East Coast Parkway, Singapore 449875",
+          "postal_code": "449875",
+          "latitude": "1.301",
+          "longitude": "103.912"
+        }
+      },
+      "ticket_availability": {
+        "is_free": false,
+        "minimum_ticket_price": { "currency": "SGD", "value": 1500, "major_value": "15.00" },
+        "maximum_ticket_price": { "currency": "SGD", "value": 2500, "major_value": "25.00" }
+      }
+    },
+    {
+      "id": "987654321099",
+      "name": { "text": "Virtual Marathon Prep Webinar" },
+      "description": { "text": "Online session about marathon preparation." },
+      "url": "https://www.eventbrite.sg/e/virtual-marathon-prep-webinar-tickets-987654321099",
+      "start": { "timezone": "Asia/Singapore", "utc": "2026-09-14T12:00:00Z" },
+      "status": "live",
+      "online_event": true,
+      "is_free": true,
+      "category_id": "108"
+    },
+    {
+      "id": "987654321100",
+      "name": { "text": "Wine Tasting Evening" },
+      "description": { "text": "Not an active event." },
+      "url": "https://www.eventbrite.sg/e/wine-tasting-evening-tickets-987654321100",
+      "start": { "timezone": "Asia/Singapore", "utc": "2026-09-15T11:00:00Z" },
+      "status": "live",
+      "online_event": false,
+      "is_free": true,
+      "category_id": "110"
+    }
+  ]
+}
