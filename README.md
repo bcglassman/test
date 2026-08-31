@@ -34,10 +34,13 @@ to prepare for one.
 | `docs/accounts-and-supply.md` | Event types, magic-link accounts, social proof, and the three supply modes |
 | `docs/assisted-publishing.md` | Posting to channels with no API, without a chore or a banned account |
 | `docs/coaches.md` | The coach directory, the trust model, and why enquiries are not bookings |
+| `docs/directus-setup.md` | Running the stack, and what the bootstrap configures |
 | `schema/001_init.sql` | Postgres DDL for the core model, Directus-compatible |
 | `schema/002_accounts_and_supply.sql` | Accounts, interests, social proof, submissions, organiser claims |
 | `schema/003_assisted_publish_and_coaches.sql` | Assisted publishing state, coach directory and enquiries |
-| `schema/tests/` | Executable checks for the invariants both migrations enforce |
+| `schema/tests/` | Executable checks for the invariants the migrations enforce |
+| `docker-compose.yml` | Postgres, Redis and Directus for local development |
+| `directus/bootstrap/` | Idempotent script registering collections, field interfaces and access policies |
 
 ## Stack
 
@@ -47,6 +50,16 @@ A separate Node worker handles the heavy lifting — ingestion, dedupe, AI enric
 image processing and multi-channel publishing — so Directus does not become a fragile
 all-in-one automation box.
 
+## Getting started
+
+```sh
+cp .env.example .env && docker compose up -d
+psql "$DATABASE_URL" -f schema/001_init.sql   # then 002, 003
+npm --prefix directus/bootstrap install && npm --prefix directus/bootstrap start
+```
+
+See `docs/directus-setup.md`.
+
 ## Status
 
-Design and schema only. No application code yet.
+Schema and Directus configuration. The public site and the worker are not built yet.

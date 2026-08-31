@@ -1,0 +1,82 @@
+# Meet in Motion - local stack
+#
+#   docker compose up -d
+#   psql "$DATABASE_URL" -f schema/001_init.sql   (then 002, 003)
+#   npm --prefix directus/bootstrap start
+#
+# Directus owns the content model and editorial workflow. The worker (ingest,
+# enrichment, publishing) is a separate service so a broken scraper cannot take
+# the CMS down with it.
+
+services:
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-mim}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      POSTGRES_DB: ${DB_DATABASE:-mim}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-mim} -d ${DB_DATABASE:-mim}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  directus:
+    image: directus/directus:11
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    environment:
+      SECRET: ${DIRECTUS_SECRET:?set DIRECTUS_SECRET in .env}
+      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL:?set DIRECTUS_ADMIN_EMAIL in .env}
+      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD:?set DIRECTUS_ADMIN_PASSWORD in .env}
+
+      DB_CLIENT: pg
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-mim}
+      DB_USER: ${DB_USER:-mim}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      CACHE_ENABLED: "true"
+      CACHE_STORE: redis
+      REDIS: redis://cache:6379
+
+      PUBLIC_URL: ${DIRECTUS_PUBLIC_URL:-http://localhost:8055}
+      CORS_ENABLED: "true"
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+
+      # Directus must never silently reshape a table the migrations own.
+      # All schema changes go through schema/*.sql.
+      SCHEMA_CHANGES: none
+
+      STORAGE_LOCATIONS: local
+      STORAGE_LOCAL_DRIVER: local
+      STORAGE_LOCAL_ROOT: /directus/uploads
+    volumes:
+      - directus-uploads:/directus/uploads
+      - directus-extensions:/directus/extensions
+    ports:
+      - "${DIRECTUS_PORT:-8055}:8055"
+
+volumes:
+  db-data:
+  directus-uploads:
+  directus-extensions:

@@ -1,0 +1,14 @@
+{
+  "name": "mim-directus-bootstrap",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Registers the Meet in Motion collections, field interfaces and access policies in Directus.",
+  "scripts": {
+    "start": "node index.mjs",
+    "plan": "node index.mjs --dry-run",
+    "test": "node --test 'test/*.test.mjs'"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": { "pg": "^8.13.0" }
+}
