@@ -1,5 +1,5 @@
 -- =============================================================================
--- Active SG - migration 002
+-- Meet in Motion - migration 002
 --
 -- Adds three things settled after the v1 product review:
 --

@@ -54,3 +54,31 @@ errors**.
 | 13 | The enrichment gate from 001 still holds after the migration |
 
 Run it after applying both migrations in order.
+
+---
+
+# constraint_checks_003.sql
+
+Covers migration 003. Tests A3, A5, C1, C3, C5, C6, C7, C9, C11 and C13 are **expected to
+raise errors**.
+
+| # | Asserts |
+|---|---|
+| A1 | WhatsApp is an assisted channel; Telegram publishes via API |
+| A2 | `awaiting_manual` is a valid publication state |
+| A3 | A publication cannot be marked published without a timestamp |
+| A4 | Marking sent records when, and who sent it |
+| A5 | Two publications cannot share a manual publish token |
+| A6 | The pending-manual queue lists unsent work and empties when marked sent |
+| C1 | A coach working with minors cannot be published on self-declaration alone |
+| C2 | With documents checked, it is allowed |
+| C3 | An unverified coach cannot be published |
+| C4 | A peer coach publishes without credentials — that is the honest difference |
+| C5 | A *professional* cannot be published with no credentials recorded |
+| C6 | A rate without a unit is rejected |
+| C7 | An enquiry cannot be forwarded to a coach without consent to share contact |
+| C8 | With consent it is fine |
+| C9 | A coach post must reference a coach |
+| C11 | An event spotlight may not also carry a coach |
+| C12 | Contextual match works as a plain category join |
+| C13 | The enrichment gate from 001 still holds |

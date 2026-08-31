@@ -1,5 +1,5 @@
 -- =============================================================================
--- Active SG - initial schema
+-- Meet in Motion - initial schema
 --
 -- Discovery platform for active social events in Singapore, built around
 -- soft-socializing attributes: low-pressure, activity-anchored ways to spend

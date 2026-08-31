@@ -1,4 +1,4 @@
-# Active SG
+# Meet in Motion
 
 A discovery platform for **active social events in Singapore**, built on the idea of
 *soft socializing* — low-pressure, low-cost, activity-anchored ways of spending time
@@ -21,6 +21,8 @@ to prepare for one.
 5. **Collects interest** — people sign in with a magic link, record what they're into,
    and register interest in events. Activity pages show counts, including how many
    others are first-timers.
+6. **Connects people to coaches** — professional and peer coaches surface beside the
+   events they suit. Introductions, not bookings.
 
 ## Repository layout
 
@@ -30,8 +32,11 @@ to prepare for one.
 | `docs/enrichment.md` | The soft-socializing attribute set and the AI-infer / human-confirm contract |
 | `docs/daily-publishing.md` | How the daily post cadence works and stays idempotent |
 | `docs/accounts-and-supply.md` | Event types, magic-link accounts, social proof, and the three supply modes |
+| `docs/assisted-publishing.md` | Posting to channels with no API, without a chore or a banned account |
+| `docs/coaches.md` | The coach directory, the trust model, and why enquiries are not bookings |
 | `schema/001_init.sql` | Postgres DDL for the core model, Directus-compatible |
 | `schema/002_accounts_and_supply.sql` | Accounts, interests, social proof, submissions, organiser claims |
+| `schema/003_assisted_publish_and_coaches.sql` | Assisted publishing state, coach directory and enquiries |
 | `schema/tests/` | Executable checks for the invariants both migrations enforce |
 
 ## Stack
