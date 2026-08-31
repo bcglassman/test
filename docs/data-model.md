@@ -1,5 +1,9 @@
 # Data model
 
+> Migration 002 adds accounts, interests, public interest counts, community
+> submissions and organiser-claimed pages. See `accounts-and-supply.md` — it supersedes
+> the "community seam (phase 2)" note below.
+
 Directus collections, fields, relationships and the status workflow. The DDL in
 `schema/001_init.sql` implements exactly what is described here.
 

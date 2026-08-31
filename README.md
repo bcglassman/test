@@ -14,12 +14,13 @@ to prepare for one.
    submissions.
 2. **Enriches** each one with *soft-socializing attributes* — is it solo-friendly, can
    you drop in, how much talking is expected — inferred by AI, then confirmed by a human.
-3. **Publishes daily** — every day, curated posts go out to the website and messaging
-   channels. Not a weekly digest.
+3. **Publishes daily** — every day, curated posts go out to the website and to the
+   Telegram and WhatsApp channels. Not a weekly digest.
 4. **Surrounds events with context** — related promotions (a gym offer before HYROX)
    and vetted resources (how to run a marathon in heat and humidity).
-5. **Collects interest** — people register interest in an event. That is the v1
-   data-collection mechanism and the seam for community features later.
+5. **Collects interest** — people sign in with a magic link, record what they're into,
+   and register interest in events. Activity pages show counts, including how many
+   others are first-timers.
 
 ## Repository layout
 
@@ -28,7 +29,10 @@ to prepare for one.
 | `docs/data-model.md` | Collections, fields, relationships, status workflow, roles |
 | `docs/enrichment.md` | The soft-socializing attribute set and the AI-infer / human-confirm contract |
 | `docs/daily-publishing.md` | How the daily post cadence works and stays idempotent |
-| `schema/001_init.sql` | Postgres DDL for the whole model, Directus-compatible |
+| `docs/accounts-and-supply.md` | Event types, magic-link accounts, social proof, and the three supply modes |
+| `schema/001_init.sql` | Postgres DDL for the core model, Directus-compatible |
+| `schema/002_accounts_and_supply.sql` | Accounts, interests, social proof, submissions, organiser claims |
+| `schema/tests/` | Executable checks for the invariants both migrations enforce |
 
 ## Stack
 

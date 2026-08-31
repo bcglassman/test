@@ -29,3 +29,28 @@ psql -h /tmp/pg -p 5433 -U postgres -d activesg -f schema/tests/constraint_check
 ```
 
 Verified against PostgreSQL 16.
+
+---
+
+# constraint_checks_002.sql
+
+Covers migration 002. Tests 2, 3, 5, 6, 7, 8, 9, 10 and 13 are **expected to raise
+errors**.
+
+| # | Asserts |
+|---|---|
+| 1 | `social` is a valid activity format |
+| 2 | An unknown format is still rejected |
+| 3 | An accepted submission must point at the activity it produced |
+| 4 | An accepted submission linked to an activity is fine |
+| 5 | A submission must carry some way to contact the submitter |
+| 6 | A reviewed submission must carry a review timestamp |
+| 7 | One person cannot have two pending claims on the same organiser |
+| 8 | An approved claim must be timestamped |
+| 9 | Magic-link token hashes are unique |
+| 10 | A person cannot record the same interest twice |
+| 11 | Interest counts exclude withdrawn and no-show registrations |
+| 12 | `show_publicly` defaults to opt-out |
+| 13 | The enrichment gate from 001 still holds after the migration |
+
+Run it after applying both migrations in order.
