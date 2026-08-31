@@ -130,3 +130,81 @@ is on the order of 2K input tokens, with a few hundred output tokens for eight s
 proposals. Even at a few hundred activities a day this is not a meaningful line item —
 the reviewer's time is the real cost, which is why `evidence` matters more than model
 price.
+
+---
+
+# Implementation
+
+Built in `worker/src/enrich/`. Run it with `node src/index.mjs enrich [--limit n]
+[--dry-run] [--effort medium]`.
+
+## The pass
+
+```
+draft activity, enrichment_status = not_started
+        │
+        ▼
+one model call: 8 attributes, each with a value, a quote, a reason, a confidence
+        │
+        ▼
+every quote verified against the listing text
+        │
+        ▼
+enrichment_proposals rows, status = proposed
+activity → pending_review, enrichment_status = proposed
+```
+
+**Nothing here writes an attribute onto the activity.** The value lands only when a human
+accepts the proposal. There is a test asserting that `activities.solo_friendly` is still
+`unknown` after a confident proposal of `yes`.
+
+## Evidence is verified mechanically
+
+Requiring a quote is not enough on its own — a fluent, plausible, unsupported quote is
+worse than no quote, because it is exactly what a reviewer waves through. So every quote
+is checked against the text the model was given. Matching is tolerant of case, whitespace,
+quote marks and ellipses (a citation spanning two sentences is fair), and strict about
+everything else.
+
+A quote that cannot be found does not become a proposal a reviewer has to disprove. The
+value is **downgraded to unknown** with confidence zero and the discrepancy written into
+the reasoning. The reviewer's time is the scarce resource; the enrichment pass must not
+spend it on claims it invented.
+
+Abstentions need no quote — `unknown` is a correct answer and the one we want when a
+listing is silent.
+
+Watch the `downgraded` count in the run summary. A rising number means the prompt has
+drifted toward confabulation and needs attention, and it is visible before any of it
+reaches the public site.
+
+## Prompt and schema come from the database
+
+The allowed values for each attribute are read from the CHECK constraints on `activities`
+at runtime — the same mechanism as the Directus dropdowns. They build both the prompt's
+"Allowed values:" lines and the Zod output schema, so the model cannot be offered, and
+cannot return, a value the database would reject. Add a value in a migration and it
+appears in both without anyone editing `attributes.mjs`.
+
+`prompt_version` and `model` are recorded on every proposal. When a prompt change shifts
+behaviour, you can tell which rows came from which version.
+
+## Model
+
+`claude-opus-5` with adaptive thinking and structured outputs via
+`client.messages.parse`. Effort defaults to `high`: these judgements are the product's
+differentiator and a wrong `solo_friendly` costs more than tokens do. `medium` is the
+step-down to measure once there is enough reviewed data to compare against —
+`--effort medium` or `ENRICH_EFFORT`.
+
+A policy decline (`stop_reason: "refusal"`) is caught, counted separately from a failure,
+and leaves the activity queued. Server-side fallbacks are deliberately not wired up:
+combining them with structured-output parsing is a shape I could not verify against the
+installed SDK, and for benign listing text a decline is both unlikely and harmless — it
+retries on the next run.
+
+## Failure behaviour
+
+A model error leaves the activity as a `draft` with `enrichment_status = not_started`, so
+the next run picks it up. Re-running an already-enriched activity supersedes the previous
+proposals rather than colliding with the partial unique index. Both are tested.

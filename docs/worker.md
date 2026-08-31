@@ -101,3 +101,18 @@ and ingest was overwriting an editor's rewritten summary on re-fetch.
 
 The enrichment pass, writing `enrichment_proposals` with evidence quoted from the listing.
 Then the daily post job. Both read what ingest produces.
+
+## Enrichment
+
+```sh
+node src/index.mjs enrich --dry-run     # print proposals with their quotes, write nothing
+node src/index.mjs enrich --limit 25
+```
+
+Reads draft activities, proposes the eight soft-socializing attributes with a quote for
+each, verifies every quote against the listing, and writes `enrichment_proposals` for a
+human to confirm. See `docs/enrichment.md` for the design and the verification rule.
+
+The run summary reports `verified`, `abstained` and `downgraded`. Downgraded means the
+model cited text that is not in the listing — those claims are reduced to unknown before
+a reviewer sees them.

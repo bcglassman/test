@@ -64,5 +64,5 @@ See `docs/directus-setup.md`.
 
 ## Status
 
-Schema, Directus configuration, and ingest with the first source adapter.
-Enrichment, daily publishing and the public site are not built yet.
+Schema, Directus configuration, ingest with the first source adapter, and the
+enrichment pass. Daily publishing and the public site are not built yet.

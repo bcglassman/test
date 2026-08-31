@@ -6,9 +6,16 @@
   "description": "Ingest, enrichment and publishing for Meet in Motion. Kept out of Directus so a broken scraper cannot take the CMS down with it.",
   "scripts": {
     "ingest": "node src/index.mjs ingest",
+    "enrich": "node src/index.mjs enrich",
     "sources": "node src/index.mjs sources",
-    "test": "node --test 'test/*.test.mjs'"
+    "test": "node --test --test-concurrency=1 'test/*.test.mjs'"
   },
-  "engines": { "node": ">=20" },
-  "dependencies": { "pg": "^8.13.0" }
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.122.0",
+    "pg": "^8.13.0",
+    "zod": "^4.5.4"
+  }
 }

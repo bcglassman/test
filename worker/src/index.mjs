@@ -12,6 +12,8 @@ import { createPool } from './db.mjs';
 import { log } from './lib/log.mjs';
 import { ingestSource } from './ingest/run.mjs';
 import * as eventbrite from './ingest/sources/eventbrite.mjs';
+import { enrichPending } from './enrich/run.mjs';
+import { createModelCaller, DEFAULT_MODEL, DEFAULT_EFFORT } from './enrich/claude.mjs';
 
 const ADAPTERS = new Map([[eventbrite.key, eventbrite]]);
 
@@ -88,14 +90,40 @@ async function ingest(pool) {
   }
 }
 
+async function enrich(pool) {
+  const dryRun = has('dry-run');
+  const limit = Number(arg('limit') ?? 25);
+  const model = arg('model') ?? process.env.ENRICH_MODEL ?? DEFAULT_MODEL;
+  const effort = arg('effort') ?? process.env.ENRICH_EFFORT ?? DEFAULT_EFFORT;
+
+  if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
+    log.warn('No ANTHROPIC_API_KEY set — the SDK will look for an `ant auth login` profile.');
+  }
+
+  log.step(`enrich · ${model} · effort ${effort} · up to ${limit}${dryRun ? ' — dry run' : ''}`);
+  const stats = await enrichPending(pool, createModelCaller({ model, effort }), { limit, dryRun });
+
+  log.info(`\n  considered ${stats.considered} · enriched ${stats.enriched} · ` +
+           `declined ${stats.declined} · failed ${stats.failed}`);
+  log.info(`  proposals: ${stats.verified} with verified quotes · ${stats.abstained} unknown · ` +
+           `${stats.downgraded} downgraded`);
+  if (stats.downgraded > 0) {
+    log.warn(`  ${stats.downgraded} proposal(s) cited text not present in the listing and were ` +
+             'downgraded to unknown. A rising count here means the prompt needs attention.');
+  }
+}
+
 async function main() {
   const command = process.argv[2];
   const pool = createPool();
   try {
     if (command === 'sources') await listSources(pool);
     else if (command === 'ingest') await ingest(pool);
+    else if (command === 'enrich') await enrich(pool);
     else {
-      console.log('Usage: node src/index.mjs <sources|ingest> [--source <slug>] [--dry-run]');
+      console.log('Usage: node src/index.mjs <sources|ingest|enrich> [options]\n' +
+                  '  ingest  [--source <slug>] [--dry-run]\n' +
+                  '  enrich  [--limit <n>] [--model <id>] [--effort <level>] [--dry-run]');
       process.exitCode = 1;
     }
   } finally {
