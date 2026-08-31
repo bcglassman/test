@@ -36,9 +36,11 @@ to prepare for one.
 | `docs/coaches.md` | The coach directory, the trust model, and why enquiries are not bookings |
 | `docs/directus-setup.md` | Running the stack, and what the bootstrap configures |
 | `docs/worker.md` | Ingest guarantees, the Eventbrite adapter, and how to add a source |
+| `docs/channel-copy.md` | Per-channel copy generation, validation and the repair round |
 | `schema/001_init.sql` | Postgres DDL for the core model, Directus-compatible |
 | `schema/002_accounts_and_supply.sql` | Accounts, interests, social proof, submissions, organiser claims |
 | `schema/003_assisted_publish_and_coaches.sql` | Assisted publishing state, coach directory and enquiries |
+| `schema/004_variant_notes.sql` | Why a generated variant was rejected |
 | `schema/tests/` | Executable checks for the invariants the migrations enforce |
 | `docker-compose.yml` | Postgres, Redis and Directus for local development |
 | `directus/bootstrap/` | Idempotent script registering collections, field interfaces and access policies |
@@ -64,5 +66,6 @@ See `docs/directus-setup.md`.
 
 ## Status
 
-Schema, Directus configuration, and the worker: ingest, enrichment, and the daily
-post job. Channel variant generation, publishing and the public site are not built yet.
+Schema, Directus configuration, and the worker: ingest, enrichment, the daily post
+job, and per-channel copy generation. The publish worker and the public site are
+not built yet.

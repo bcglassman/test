@@ -15,6 +15,8 @@ import * as eventbrite from './ingest/sources/eventbrite.mjs';
 import { enrichPending } from './enrich/run.mjs';
 import { createModelCaller, DEFAULT_MODEL, DEFAULT_EFFORT } from './enrich/claude.mjs';
 import { scheduleDays, findGaps, report, tomorrow, today } from './schedule/run.mjs';
+import { generateVariants } from './variants/run.mjs';
+import { createVariantWriter, DEFAULT_MODEL as VARIANT_MODEL, DEFAULT_EFFORT as VARIANT_EFFORT } from './variants/claude.mjs';
 
 const ADAPTERS = new Map([[eventbrite.key, eventbrite]]);
 
@@ -138,6 +140,24 @@ async function gaps(pool) {
   process.exitCode = 1;   // so a cron can alert on it
 }
 
+async function variants(pool) {
+  const dryRun = has('dry-run');
+  const limit = Number(arg('limit') ?? 10);
+  const model = arg('model') ?? process.env.VARIANT_MODEL ?? VARIANT_MODEL;
+  const effort = arg('effort') ?? process.env.VARIANT_EFFORT ?? VARIANT_EFFORT;
+
+  log.step(`variants · ${model} · effort ${effort} · up to ${limit} post(s)${dryRun ? ' — dry run' : ''}`);
+  const stats = await generateVariants(pool, createVariantWriter({ model, effort }), { limit, dryRun });
+
+  log.info(`\n  ${stats.posts} post(s) · ${stats.written} variant(s) written` +
+           `${stats.repaired ? ` (${stats.repaired} after repair)` : ''} · ` +
+           `${stats.rejected} rejected · ${stats.declined} declined · ${stats.failed} failed`);
+  if (stats.rejected > 0) {
+    log.warn('  Rejected variants carry their reason in generation_note. That channel has ' +
+             'no copy until someone writes it or the generator is re-run.');
+  }
+}
+
 async function main() {
   const command = process.argv[2];
   const pool = createPool();
@@ -147,12 +167,14 @@ async function main() {
     else if (command === 'enrich') await enrich(pool);
     else if (command === 'schedule') await schedule(pool);
     else if (command === 'gaps') await gaps(pool);
+    else if (command === 'variants') await variants(pool);
     else {
-      console.log('Usage: node src/index.mjs <sources|ingest|enrich|schedule|gaps> [options]\n' +
+      console.log('Usage: node src/index.mjs <sources|ingest|enrich|schedule|gaps|variants> [options]\n' +
                   '  ingest    [--source <slug>] [--dry-run]\n' +
                   '  enrich    [--limit <n>] [--model <id>] [--effort <level>] [--dry-run]\n' +
                   '  schedule  [--from <YYYY-MM-DD>] [--days <n>] [--dry-run]\n' +
-                  '  gaps      [--from <YYYY-MM-DD>] [--days <n>]');
+                  '  gaps      [--from <YYYY-MM-DD>] [--days <n>]\n' +
+                  '  variants  [--limit <n>] [--model <id>] [--effort <level>] [--dry-run]');
       process.exitCode = 1;
     }
   } finally {

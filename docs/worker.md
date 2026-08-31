@@ -138,3 +138,20 @@ cron can alert before a day is silently missed. See `docs/daily-publishing.md`.
 ```
 
 Ingest before enrichment before scheduling: each reads what the previous one produced.
+
+## Channel copy
+
+```sh
+node src/index.mjs variants --dry-run
+node src/index.mjs variants --limit 10
+```
+
+Writes per-channel copy for approved posts in one model call, validates it against each
+channel's hard constraints, repairs what fails once, and stores the rest as rejected with
+a reason. See `docs/channel-copy.md`.
+
+Add it to the cron after scheduling:
+
+```
+0 5 * * *  worker  node src/index.mjs variants --limit 20
+```
