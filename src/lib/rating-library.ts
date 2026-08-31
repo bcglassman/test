@@ -17,6 +17,34 @@ export interface LibraryRating extends RatingDefinition {
  */
 export const RATING_LIBRARY: LibraryRating[] = [
   {
+    category: "Control",
+    key: "body_stability",
+    label: "Body Stability",
+    description: "How steady the body stays through the movement or hold",
+    max: 5,
+    scale: [
+      "Wobbling or repositioning constantly",
+      "Frequently unsteady",
+      "Holds with visible effort",
+      "Steady with minor adjustment",
+      "Completely steady throughout",
+    ],
+  },
+  {
+    category: "Forelimb",
+    key: "forelimb_control",
+    label: "Forelimb Control",
+    description: "Deliberate, even use of the front limbs",
+    max: 5,
+    scale: [
+      "Little control; propping or collapsing",
+      "Frequently uneven or braced",
+      "Moderate control",
+      "Mostly even and deliberate",
+      "Fully controlled and even",
+    ],
+  },
+  {
     category: "Load",
     key: "intensity",
     label: "Intensity",

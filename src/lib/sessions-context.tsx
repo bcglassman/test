@@ -12,6 +12,7 @@ import type {
   Dog,
   Exercise,
   Plan,
+  RatingDimensionDoc,
   SessionWithExercise,
   TrainingSession,
   UserRole,
@@ -22,7 +23,9 @@ import {
   getDogs,
   getExercises,
   getPlans,
+  getRatingDimensions,
   getSessions,
+  saveExercise as saveExerciseToStore,
   savePlan as savePlanToStore,
   saveDog as saveDogToStore,
   saveSession as saveSessionToStore,
@@ -59,6 +62,11 @@ interface SessionsContextValue {
   /** Every dog's plans; the calendar picks the active one for its dog. */
   plans: Plan[];
   savePlan: (plan: Plan) => Promise<Plan>;
+  /** The global Rating Library. */
+  ratingDimensions: RatingDimensionDoc[];
+  saveExercise: (
+    exercise: Omit<Exercise, "defaultRatings"> & { id: string },
+  ) => Promise<Exercise>;
   loading: boolean;
   saveSession: (session: TrainingSession) => Promise<TrainingSession>;
   deleteSession: (id: string) => Promise<void>;
@@ -80,22 +88,27 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [allDogs, setAllDogs] = useState<Dog[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [ratingDimensions, setRatingDimensions] = useState<RatingDimensionDoc[]>(
+    [],
+  );
   const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const [s, e, d, p] = await Promise.all([
+    const [s, e, d, p, r] = await Promise.all([
       getSessions(),
       getExercises(),
       getDogs(),
       getPlans(),
+      getRatingDimensions(),
     ]);
     setRawSessions(s);
     setExercises(e);
     setAllDogs(d);
     setPlans(p);
+    setRatingDimensions(r);
     setLoading(false);
   }, []);
 
@@ -165,6 +178,15 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
     [refresh],
   );
 
+  const saveExercise = useCallback(
+    async (exercise: Omit<Exercise, "defaultRatings"> & { id: string }) => {
+      const saved = await saveExerciseToStore(exercise);
+      await refresh();
+      return saved;
+    },
+    [refresh],
+  );
+
   const savePlan = useCallback(
     async (plan: Plan) => {
       const saved = await savePlanToStore(plan);
@@ -217,6 +239,8 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
       selectDog,
       plans,
       savePlan,
+      ratingDimensions,
+      saveExercise,
       loading,
       saveSession,
       deleteSession,
@@ -238,6 +262,8 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
       selectDog,
       plans,
       savePlan,
+      ratingDimensions,
+      saveExercise,
       loading,
       saveSession,
       deleteSession,

@@ -46,7 +46,41 @@ export const Sessions: CollectionConfig = {
       },
       fields: [
         { name: "setNumber", type: "number", required: true },
+        // What was actually done in this set. Which of these the session
+        // form offers comes from the exercise's trackingMethods; anything
+        // not tracked simply stays empty.
         { name: "reps", type: "number" },
+        {
+          name: "repsLeft",
+          type: "number",
+          admin: { description: "For exercises tracked per side." },
+        },
+        { name: "repsRight", type: "number" },
+        {
+          name: "durationSeconds",
+          type: "number",
+          admin: { description: "Elapsed time for this set, in seconds." },
+        },
+        {
+          name: "activeDurationSeconds",
+          type: "number",
+          admin: {
+            description:
+              "Time actually moving — belt time, swim time — as opposed to elapsed.",
+          },
+        },
+        {
+          name: "distanceMeters",
+          type: "number",
+          admin: { description: "Stored in metres whatever unit is displayed." },
+        },
+        { name: "intervals", type: "number" },
+        {
+          name: "holdSeconds",
+          type: "number",
+          admin: { description: "For static holds." },
+        },
+        { name: "steps", type: "number" },
         {
           name: "passes",
           type: "number",

@@ -2,6 +2,7 @@ import type {
   Exercise,
   RatingDefinition,
   RatingDimension,
+  SessionSet,
   SessionWithExercise,
   TrainingSession,
   WatchItem,
@@ -134,12 +135,35 @@ export function setSummary(session: TrainingSession): string | undefined {
   const count = session.sets.length;
   if (count === 0) return undefined;
 
-  const unit = session.sets.some((s) => s.passes !== undefined)
-    ? "passes"
-    : "reps";
-  const values = session.sets.map((s) =>
-    unit === "passes" ? s.passes : s.reps,
+  // Whichever measure this exercise actually recorded. Checked in the
+  // order a reader would care about: what was counted, then how far, then
+  // how long.
+  const MEASURES = [
+    { unit: "reps", read: (s: SessionSet) => s.reps },
+    { unit: "passes", read: (s: SessionSet) => s.passes },
+    { unit: "steps", read: (s: SessionSet) => s.steps },
+    { unit: "intervals", read: (s: SessionSet) => s.intervals },
+    {
+      unit: "km",
+      read: (s: SessionSet) =>
+        s.distanceMeters === undefined
+          ? undefined
+          : Math.round((s.distanceMeters / 1000) * 100) / 100,
+    },
+    {
+      unit: "min",
+      read: (s: SessionSet) =>
+        s.durationSeconds === undefined
+          ? undefined
+          : Math.round(s.durationSeconds / 60),
+    },
+    { unit: "sec hold", read: (s: SessionSet) => s.holdSeconds },
+  ];
+  const measure = MEASURES.find((m) =>
+    session.sets.some((s) => m.read(s) !== undefined),
   );
+  const unit = measure?.unit ?? "reps";
+  const values = session.sets.map((s) => measure?.read(s));
 
   const setsLabel = `${count} ${count === 1 ? "set" : "sets"}`;
   if (values.every((v) => v === undefined)) return setsLabel;

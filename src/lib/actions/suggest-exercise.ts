@@ -1,27 +1,38 @@
 "use server";
 
 import Anthropic from "@anthropic-ai/sdk";
-import type { ExerciseCategory } from "@/lib/types";
+import { RATING_LIBRARY } from "@/lib/rating-library";
+import {
+  EQUIPMENT_VALUES,
+  EXERCISE_CATEGORIES,
+  FOCUS_VALUES,
+  TRACKING_METHODS,
+  UNITS,
+  type ExerciseCategory,
+  type TrackingMethod,
+  type Unit,
+} from "@/lib/taxonomy";
 import { requireLoggedInUser } from "./ai-shared";
 
 export interface SuggestedExerciseDetails {
   category: ExerciseCategory;
-  focus: string;
+  focus: string[];
   description: string;
-  defaultRatings: { key: string; label: string; max: number; scale: string[] }[];
+  trackingMethods: TrackingMethod[];
+  primaryUnit?: Unit;
+  equipment: string[];
+  techniqueNotes: string;
+  /** Keys from the global Rating Library, in presentation order. */
+  ratingKeys: string[];
 }
 
-const CATEGORIES: ExerciseCategory[] = [
-  "Strength",
-  "Mobility",
-  "Coordination",
-  "Cardio",
-  "Skill",
-];
-
 /**
- * Given just an exercise name, asks Claude to fill in the rest of the
- * Exercise fields, including a 5-level rubric per rating dimension.
+ * Given just an exercise name, fills in the rest of the library entry.
+ *
+ * Ratings are *chosen from* the global library by key rather than written
+ * fresh: the point of the library is that a dimension is defined once and
+ * worded the same everywhere, and a model inventing a near-duplicate
+ * "Form Quality" beside the existing "Gait / Form" would quietly undo that.
  */
 export async function suggestExerciseDetails(
   name: string,
@@ -33,86 +44,101 @@ export async function suggestExerciseDetails(
 
   await requireLoggedInUser();
 
+  const catalogue = RATING_LIBRARY.map(
+    (r) => `${r.key} — ${r.label} (${r.description})`,
+  ).join("\n");
+
   const client = new Anthropic();
   const response = await client.messages.create({
     model: "claude-opus-5",
     max_tokens: 2048,
-    system:
-      "You help fill in metadata for exercises in Canine Training, a dog " +
-      "training and physical-rehab exercise journal. Given just an " +
-      "exercise's name, infer sensible values for a physical-therapy-style " +
-      "logging form for that exercise.",
-    messages: [
-      {
-        role: "user",
-        content: `Exercise name: "${trimmed}"`,
-      },
-    ],
+    system: [
+      "You fill in entries for the Exercise Library in Canine Training, a ",
+      "dog training and physical-rehab journal. Given an exercise's name, ",
+      "infer the rest of its library definition.",
+      "",
+      "The library answers: what is the exercise, what does it train, how ",
+      "is it measured, what does good execution look like, and how should ",
+      "performance be rated.",
+      "",
+      "Category is the *type* of exercise, not the body part — the body ",
+      "part is Focus. Tracking methods decide which fields the session ",
+      "form will offer, so choose only what would genuinely be recorded.",
+      "",
+      "Pick rating dimensions from this library by key. Choose 3-6 that ",
+      "actually discriminate performance of this exercise, most important ",
+      "first. Do not invent new ones:",
+      catalogue,
+    ].join("\n"),
+    messages: [{ role: "user", content: `Exercise name: "${trimmed}"` }],
     tools: [
       {
         name: "populate_exercise",
-        description:
-          "Fill in the category, focus, description, and rating dimensions " +
-          "for this exercise.",
+        description: "Fill in the exercise's library definition.",
         input_schema: {
           type: "object",
           properties: {
             category: {
               type: "string",
-              enum: CATEGORIES,
-              description: "The best-fitting exercise category.",
+              enum: [...EXERCISE_CATEGORIES],
+              description: "The type of exercise.",
             },
             focus: {
-              type: "string",
-              description:
-                'Body area or focus, e.g. "Hind Limb", "Core", "General".',
+              type: "array",
+              minItems: 1,
+              maxItems: 5,
+              description: `What it trains. Prefer these: ${FOCUS_VALUES.join(", ")}.`,
+              items: { type: "string" },
             },
             description: {
               type: "string",
               description:
-                "One or two sentences describing what the dog does during this exercise.",
+                "Two or three sentences: what the dog does, and why the " +
+                "exercise is performed.",
             },
-            defaultRatings: {
+            trackingMethods: {
+              type: "array",
+              minItems: 1,
+              maxItems: 5,
+              description: "Only what would genuinely be recorded per set.",
+              items: { type: "string", enum: [...TRACKING_METHODS] },
+            },
+            primaryUnit: {
+              type: "string",
+              enum: [...UNITS],
+              description: "Default unit for the primary tracking method.",
+            },
+            equipment: {
+              type: "array",
+              maxItems: 4,
+              description: `Normally required. Prefer these: ${EQUIPMENT_VALUES.join(", ")}. Use ["None"] if none is needed.`,
+              items: { type: "string" },
+            },
+            techniqueNotes: {
+              type: "string",
+              description:
+                "Two or three sentences on good execution and setup, and " +
+                "what to watch for that would mean stopping or easing off.",
+            },
+            ratingKeys: {
               type: "array",
               minItems: 3,
-              maxItems: 5,
+              maxItems: 6,
               description:
-                "3-5 rating dimensions most relevant to judging performance " +
-                'of this specific exercise (e.g. "Form", "Control", but also ' +
-                "exercise-specific ones like \"Stride Length\" or \"Balance\" when they fit better).",
-              items: {
-                type: "object",
-                properties: {
-                  key: {
-                    type: "string",
-                    description: 'Short lowercase key, e.g. "form".',
-                  },
-                  label: {
-                    type: "string",
-                    description: 'Display label, e.g. "Form".',
-                  },
-                  max: {
-                    type: "number",
-                    enum: [5],
-                    description: "Always 5 — every dimension uses a 1-5 scale.",
-                  },
-                  scale: {
-                    type: "array",
-                    minItems: 5,
-                    maxItems: 5,
-                    description:
-                      "Exactly 5 short phrases describing what a score of 1 " +
-                      "through 5 means for this dimension, worst to best, " +
-                      'e.g. ["Significant Form Breakdown", ..., "Maintains Excellent Form Throughout"].',
-                    items: { type: "string" },
-                  },
-                },
-                required: ["key", "label", "max", "scale"],
-                additionalProperties: false,
-              },
+                "Keys from the library above, most important first.",
+              items: { type: "string" },
             },
           },
-          required: ["category", "focus", "description", "defaultRatings"],
+          required: [
+            "category",
+            "focus",
+            "description",
+            "trackingMethods",
+            "primaryUnit",
+            "equipment",
+            "techniqueNotes",
+            "ratingKeys",
+          ],
           additionalProperties: false,
         },
         strict: true,
@@ -128,5 +154,12 @@ export async function suggestExerciseDetails(
     throw new Error("AI didn't return a suggestion. Try again.");
   }
 
-  return toolUse.input as SuggestedExerciseDetails;
+  const out = toolUse.input as SuggestedExerciseDetails;
+  const known = new Set(RATING_LIBRARY.map((r) => r.key));
+  return {
+    ...out,
+    // Drop anything that isn't actually in the library, rather than
+    // carrying a dangling key into the form.
+    ratingKeys: out.ratingKeys.filter((k) => known.has(k)),
+  };
 }

@@ -191,8 +191,25 @@ are in `src/collections/`:
   movement observations, restrictions, notes, and the accounts recorded as
   its owners and trainers. Archived dogs stay in the record but drop out of
   the selector.
-- **Exercise** (`src/collections/Exercises.ts`) — the reusable exercise
-  definition (name, category, focus, default rating dimensions).
+- **Exercise** (`src/collections/Exercises.ts`) — the reusable, global
+  definition: name, one category (the *type* of exercise), many focus
+  values (what it trains), description, tracking methods, primary unit,
+  equipment, technique notes, and ordered references into the Rating
+  Library. Never dog-specific — what a dog actually did belongs to the
+  session. Exercises are archived, never deleted, so the sessions that
+  reference them stay whole. The vocabulary is in `src/lib/taxonomy.ts`
+  and the seeded library in `src/seed-exercises.ts`.
+- **RatingDimension** (`src/collections/RatingDimensions.ts`) — the global
+  Rating Library, promoted from a static file to a collection so exercises
+  can *reference* dimensions instead of copying them. A session still
+  snapshots what it was scored against, which is what stops an edit here
+  rewriting what a past score meant.
+- **Tracking methods decide the session fields.** An exercise's
+  `trackingMethods` choose which measurements a set offers — duration,
+  distance, reps, reps per side, passes, intervals, hold time, steps — so
+  a 60-minute walk, five carpetmill intervals and seven cavaletti passes
+  all use one form rather than three (`TrackingFields.tsx`). Durations are
+  stored in seconds and distances in metres whatever the display unit.
 - **Session** (`src/collections/Sessions.ts`) — one instance of performing
   an exercise: relationships to its dog and its exercise, a `sets` array, and the
   things that span sets (rest, environment, overall notes) plus its media.

@@ -5,59 +5,9 @@
 import { getPayload } from "payload";
 import config from "./payload.config";
 import { solidColorPng } from "./seed-assets";
-
-// 1-5 with wording for each level, so the session form can say what a score
-// actually means rather than just showing a number.
-const ratingDims = [
-  {
-    key: "form",
-    label: "Form",
-    max: 5,
-    scale: [
-      "Significant form breakdown",
-      "Noticeable form deterioration",
-      "Minor form changes",
-      "Maintains good form",
-      "Maintains excellent form throughout",
-    ],
-  },
-  {
-    key: "control",
-    label: "Control",
-    max: 5,
-    scale: [
-      "Little to no control",
-      "Frequent loss of control",
-      "Occasional loss of control",
-      "Mostly controlled",
-      "Fully controlled throughout",
-    ],
-  },
-  {
-    key: "symmetry",
-    label: "Symmetry",
-    max: 5,
-    scale: [
-      "Heavily favouring one side",
-      "Clear asymmetry under load",
-      "Slight asymmetry",
-      "Near-even loading",
-      "Even loading throughout",
-    ],
-  },
-  {
-    key: "intensity",
-    label: "Intensity",
-    max: 5,
-    scale: [
-      "Barely raised effort, no panting",
-      "Light workload, brief panting",
-      "Moderate workload, steady panting",
-      "Meaningful incline/cardio workload with substantial panting",
-      "Maximal sustained effort, heavy panting throughout",
-    ],
-  },
-];
+import { RATING_LIBRARY } from "./lib/rating-library";
+import { SEED_EXERCISES } from "./seed-exercises";
+import { LEGACY_CATEGORY_MAP } from "./lib/taxonomy";
 
 /**
  * Builds the sets array from per-dimension score columns, e.g.
@@ -274,6 +224,147 @@ async function seedWeeklyPlan(
   payload.logger.info(`Created weekly plan with ${items.length} items.`);
 }
 
+
+type Payload = Awaited<ReturnType<typeof getPayload>>;
+
+/**
+ * The global Rating Library, as documents. Idempotent by key: an existing
+ * dimension is left alone rather than overwritten, so wording edited in the
+ * app survives every later deploy.
+ */
+async function seedRatingDimensions(payload: Payload): Promise<Map<string, number>> {
+  const existing = await payload.find({
+    collection: "rating-dimensions",
+    limit: 500,
+    depth: 0,
+  });
+  const byKey = new Map<string, number>(
+    existing.docs.map((d) => [d.key, d.id as number]),
+  );
+
+  let created = 0;
+  for (const entry of RATING_LIBRARY) {
+    if (byKey.has(entry.key)) continue;
+    const doc = await payload.create({
+      collection: "rating-dimensions",
+      data: {
+        key: entry.key,
+        label: entry.label,
+        category: entry.category,
+        description: entry.description,
+        max: entry.max,
+        scale: entry.scale,
+      },
+    });
+    byKey.set(entry.key, doc.id as number);
+    created += 1;
+  }
+  if (created) {
+    payload.logger.info(`Added ${created} rating dimension(s) to the library.`);
+  }
+  return byKey;
+}
+
+/**
+ * The seeded Exercise Library. Matched by name so a re-run tops up what is
+ * missing without touching an exercise someone has since edited.
+ */
+async function seedExerciseLibrary(
+  payload: Payload,
+  dimensionIds: Map<string, number>,
+) {
+  const existing = await payload.find({
+    collection: "exercises",
+    limit: 500,
+    depth: 0,
+  });
+  const byName = new Map(existing.docs.map((d) => [d.name.toLowerCase(), d]));
+
+  let created = 0;
+  for (const ex of SEED_EXERCISES) {
+    if (byName.has(ex.name.toLowerCase())) continue;
+    await payload.create({
+      collection: "exercises",
+      data: {
+        name: ex.name,
+        category: ex.category,
+        focus: ex.focus,
+        description: ex.description,
+        trackingMethods: ex.trackingMethods,
+        primaryUnit: ex.primaryUnit,
+        equipment: ex.equipment,
+        techniqueNotes: ex.techniqueNotes,
+        defaultRatingDimensions: ex.ratingKeys
+          .map((k) => dimensionIds.get(k))
+          .filter((id): id is number => id !== undefined),
+        status: "active",
+      },
+    });
+    created += 1;
+  }
+  if (created) {
+    payload.logger.info(`Added ${created} exercise(s) to the library.`);
+  }
+}
+
+/**
+ * Brings exercises defined before this model forward: the old five
+ * categories become the new seven, the single free-text focus becomes a
+ * list, and embedded rating copies become references to the library.
+ *
+ * Sessions are untouched. They already snapshot the rating definitions they
+ * were scored against, which is exactly why changing the library here can't
+ * rewrite what a past session meant.
+ */
+async function migrateLegacyExercises(
+  payload: Payload,
+  dimensionIds: Map<string, number>,
+) {
+  const all = await payload.find({
+    collection: "exercises",
+    limit: 500,
+    depth: 0,
+  });
+  let migrated = 0;
+  for (const doc of all.docs) {
+    const legacy = doc as unknown as {
+      id: number;
+      category: string;
+      focus?: unknown;
+      defaultRatings?: { key: string }[] | null;
+      defaultRatingDimensions?: unknown[] | null;
+      status?: string;
+    };
+    const data: Record<string, unknown> = {};
+
+    const remapped = LEGACY_CATEGORY_MAP[legacy.category];
+    if (remapped && remapped !== legacy.category) data.category = remapped;
+    if (typeof legacy.focus === "string") {
+      data.focus = legacy.focus
+        .split(",")
+        .map((f) => f.trim())
+        .filter(Boolean);
+    }
+    if (!legacy.status) data.status = "active";
+    if (
+      (legacy.defaultRatingDimensions ?? []).length === 0 &&
+      (legacy.defaultRatings ?? []).length > 0
+    ) {
+      const ids = (legacy.defaultRatings ?? [])
+        .map((r) => dimensionIds.get(r.key))
+        .filter((id): id is number => id !== undefined);
+      if (ids.length > 0) data.defaultRatingDimensions = ids;
+    }
+
+    if (Object.keys(data).length === 0) continue;
+    await payload.update({ collection: "exercises", id: legacy.id, data });
+    migrated += 1;
+  }
+  if (migrated) {
+    payload.logger.info(`Brought ${migrated} exercise(s) onto the new model.`);
+  }
+}
+
 async function main() {
   const payload = await getPayload({ config });
 
@@ -293,16 +384,22 @@ async function main() {
   // Runs on every deploy, before the content skip below — an existing
   // database has sessions but no dog, and that state has to heal itself
   // rather than wait for someone to remember a one-off command.
+  const dimensionIds = await seedRatingDimensions(payload);
+  await seedExerciseLibrary(payload, dimensionIds);
+  await migrateLegacyExercises(payload, dimensionIds);
+
   const cookie = await ensureDog(payload);
   await backfillDogAndRoles(payload, cookie);
   await backfillWatchPoints(payload);
 
-  const existingExercises = await payload.find({
-    collection: "exercises",
+  // Keyed on sessions, not exercises: the library above always seeds, so
+  // "any exercise exists" stopped meaning "the demo content is already in".
+  const existingSessions = await payload.find({
+    collection: "sessions",
     limit: 1,
   });
-  if (existingExercises.docs.length > 0) {
-    payload.logger.info("Exercises already exist — skipping content seed.");
+  if (existingSessions.docs.length > 0) {
+    payload.logger.info("Sessions already exist — skipping demo content.");
     process.exit(0);
   }
 
@@ -327,39 +424,23 @@ async function main() {
     },
   });
 
-  const sitToStand = await payload.create({
-    collection: "exercises",
-    data: {
-      name: "Sit to Stand",
-      category: "Strength",
-      focus: "Hind Limb",
-      description:
-        "Dog transitions from seated to standing while maintaining symmetrical hind-limb positioning.",
-      defaultRatings: ratingDims,
-    },
-  });
+  // The demo sessions point at real library entries rather than inventing
+  // parallel copies — the whole point of a global library.
+  async function libraryExercise(name: string) {
+    const found = await payload.find({
+      collection: "exercises",
+      where: { name: { equals: name } },
+      limit: 1,
+      depth: 0,
+    });
+    const doc = found.docs[0];
+    if (!doc) throw new Error(`Seeded exercise missing: ${name}`);
+    return doc;
+  }
 
-  const cavaletti = await payload.create({
-    collection: "exercises",
-    data: {
-      name: "Cavaletti — Slow Walk",
-      category: "Coordination",
-      focus: "Hind Limb",
-      description: "Deliberate stepping over evenly spaced rails.",
-      defaultRatings: ratingDims,
-    },
-  });
-
-  const treadmill = await payload.create({
-    collection: "exercises",
-    data: {
-      name: "Treadmill Walk",
-      category: "Cardio",
-      focus: "General",
-      description: "Steady-state endurance walk.",
-      defaultRatings: ratingDims,
-    },
-  });
+  const sitToStand = await libraryExercise("Sit-to-Stand");
+  const cavaletti = await libraryExercise("Cavaletti — Slow Walk");
+  const treadmill = await libraryExercise("Flat Treadmill Walk");
 
   async function uploadPlaceholder(
     name: string,

@@ -4,6 +4,7 @@
 // works with Exercise / TrainingSession / MediaItem.
 
 import type {
+  RatingDimension as PayloadRatingDimension,
   User as PayloadUser,
   Dog as PayloadDog,
   Plan as PayloadPlan,
@@ -17,8 +18,8 @@ import type {
   Exercise,
   Plan,
   PlanItem,
+  RatingDimensionDoc,
   MediaItem,
-  RatingDimension,
   RatingDefinition,
   SessionSet,
   TrainingSession,
@@ -155,41 +156,73 @@ export function planToPayloadBody(plan: Plan) {
   };
 }
 
+export function mapRatingDimension(
+  doc: PayloadRatingDimension,
+): RatingDimensionDoc {
+  return {
+    id: String(doc.id),
+    key: doc.key,
+    label: doc.label,
+    max: doc.max,
+    scale: scaleOrUndefined(doc.scale),
+    category: doc.category ?? undefined,
+    description: doc.description ?? undefined,
+    archived: doc.archived ?? false,
+  };
+}
+
 export function mapExercise(doc: PayloadExercise): Exercise {
+  const dims = doc.defaultRatingDimensions ?? [];
+  // Joined when the query asked for depth; bare ids otherwise. Only the
+  // joined form can supply the wording, so an id-only read falls back to
+  // the legacy embedded copies rather than losing the labels entirely.
+  const joined = dims.filter(
+    (d): d is PayloadRatingDimension => typeof d !== "number",
+  );
+  const fromLibrary = joined.map((d) => ({
+    key: d.key,
+    label: d.label,
+    max: d.max,
+    scale: scaleOrUndefined(d.scale),
+  }));
+  const legacy = (doc.defaultRatings ?? []).map((r) => ({
+    key: r.key,
+    label: r.label,
+    max: r.max,
+    scale: scaleOrUndefined(r.scale),
+  }));
+
   return {
     id: String(doc.id),
     name: doc.name,
     category: doc.category,
-    focus: doc.focus,
+    focus: doc.focus ?? [],
     description: doc.description ?? undefined,
-    defaultRatings: (doc.defaultRatings ?? []).map((r) => ({
-      key: r.key,
-      label: r.label,
-      max: r.max,
-      scale: scaleOrUndefined(r.scale),
-    })),
+    trackingMethods: doc.trackingMethods ?? [],
+    primaryUnit: doc.primaryUnit ?? undefined,
+    equipment: doc.equipment ?? [],
+    techniqueNotes: doc.techniqueNotes ?? undefined,
+    defaultRatingDimensionIds: dims.map((d) =>
+      String(typeof d === "number" ? d : d.id),
+    ),
+    defaultRatings: fromLibrary.length > 0 ? fromLibrary : legacy,
+    status: doc.status,
   };
 }
 
-/** Request body for POST /api/exercises, built from our app's Exercise shape. */
-export function exerciseToPayloadBody(exercise: {
-  name: string;
-  category: Exercise["category"];
-  focus: string;
-  description?: string;
-  defaultRatings: Omit<RatingDimension, "score">[];
-}) {
+/** Request body for POST/PATCH /api/exercises. */
+export function exerciseToPayloadBody(exercise: Omit<Exercise, "id" | "defaultRatings">) {
   return {
     name: exercise.name,
     category: exercise.category,
     focus: exercise.focus,
     description: exercise.description ?? null,
-    defaultRatings: exercise.defaultRatings.map((r) => ({
-      key: r.key,
-      label: r.label,
-      max: r.max,
-      scale: r.scale && r.scale.length === 5 ? r.scale : undefined,
-    })),
+    trackingMethods: exercise.trackingMethods,
+    primaryUnit: exercise.primaryUnit ?? null,
+    equipment: exercise.equipment,
+    techniqueNotes: exercise.techniqueNotes ?? null,
+    defaultRatingDimensions: exercise.defaultRatingDimensionIds.map(Number),
+    status: exercise.status,
   };
 }
 
@@ -258,7 +291,15 @@ function mapSessionSet(
   return {
     setNumber: set.setNumber,
     reps: set.reps ?? undefined,
+    repsLeft: set.repsLeft ?? undefined,
+    repsRight: set.repsRight ?? undefined,
     passes: set.passes ?? undefined,
+    durationSeconds: set.durationSeconds ?? undefined,
+    activeDurationSeconds: set.activeDurationSeconds ?? undefined,
+    distanceMeters: set.distanceMeters ?? undefined,
+    intervals: set.intervals ?? undefined,
+    holdSeconds: set.holdSeconds ?? undefined,
+    steps: set.steps ?? undefined,
     notes: set.notes ?? undefined,
     watchItems: mapWatchItems(set),
     ratings: (set.ratings ?? []).map((r) => ({ key: r.key, score: r.score })),
@@ -311,7 +352,15 @@ export function sessionToPayloadBody(session: TrainingSession) {
     sets: session.sets.map((s) => ({
       setNumber: s.setNumber,
       reps: s.reps ?? null,
+      repsLeft: s.repsLeft ?? null,
+      repsRight: s.repsRight ?? null,
       passes: s.passes ?? null,
+      durationSeconds: s.durationSeconds ?? null,
+      activeDurationSeconds: s.activeDurationSeconds ?? null,
+      distanceMeters: s.distanceMeters ?? null,
+      intervals: s.intervals ?? null,
+      holdSeconds: s.holdSeconds ?? null,
+      steps: s.steps ?? null,
       notes: s.notes ?? null,
       // Written only to watchPoints; the legacy string list is cleared so
       // the two can't drift apart.
@@ -336,6 +385,10 @@ export function sessionToPayloadBody(session: TrainingSession) {
     locationName: session.locationName ?? null,
     latitude: session.latitude ?? null,
     longitude: session.longitude ?? null,
+    // An empty group has to be an empty object, not null: Payload reads
+    // straight through a group's fields on write, so `null` here threw
+    // "Cannot read properties of null" server-side and failed the save.
+    // Every session logged without a weather lookup hit that.
     weather: session.weather
       ? {
           temperatureC: session.weather.temperatureC ?? null,
@@ -343,7 +396,7 @@ export function sessionToPayloadBody(session: TrainingSession) {
           description: session.weather.description ?? null,
           fetchedAt: session.weather.fetchedAt ?? null,
         }
-      : null,
+      : {},
     media: session.media
       .filter((m) => m.fileId)
       .map((m) => ({

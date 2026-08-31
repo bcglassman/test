@@ -10,6 +10,7 @@ import { Sessions } from "./collections/Sessions";
 import { Media } from "./collections/Media";
 import { Dogs } from "./collections/Dogs";
 import { Plans } from "./collections/Plans";
+import { RatingDimensions } from "./collections/RatingDimensions";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -40,7 +41,7 @@ export default buildConfig({
       titleSuffix: " — Canine Training CMS",
     },
   },
-  collections: [Users, Dogs, Plans, Exercises, Sessions, Media],
+  collections: [Users, Dogs, Plans, RatingDimensions, Exercises, Sessions, Media],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || "",
   typescript: {

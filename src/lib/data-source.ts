@@ -1,4 +1,5 @@
 import type {
+  RatingDimension as PayloadRatingDimension,
   User as PayloadUser,
   Dog as PayloadDog,
   Plan as PayloadPlan,
@@ -10,7 +11,7 @@ import type {
   Dog,
   Exercise,
   Plan,
-  RatingDimension,
+  RatingDimensionDoc,
   TrainingSession,
 } from "./types";
 import {
@@ -22,6 +23,7 @@ import {
 import {
   dogToPayloadBody,
   mapPlan,
+  mapRatingDimension,
   mapUser,
   planToPayloadBody,
   exerciseToPayloadBody,
@@ -87,10 +89,32 @@ export async function savePlan(plan: Plan): Promise<Plan> {
 }
 
 export async function getExercises(): Promise<Exercise[]> {
+  // depth=1 joins the rating dimensions so the labels and 1-5 wording come
+  // back with the exercise rather than needing a second round trip.
   const data = await payloadGet<{ docs: PayloadExercise[] }>(
-    "exercises?limit=200&sort=name",
+    "exercises?limit=300&sort=name&depth=1",
   );
   return data.docs.map(mapExercise);
+}
+
+export async function getRatingDimensions(): Promise<RatingDimensionDoc[]> {
+  const data = await payloadGet<{ docs: PayloadRatingDimension[] }>(
+    "rating-dimensions?limit=300&sort=label",
+  );
+  return data.docs.map(mapRatingDimension);
+}
+
+export async function saveExercise(
+  exercise: Omit<Exercise, "defaultRatings"> & { id: string },
+): Promise<Exercise> {
+  const body = exerciseToPayloadBody(exercise);
+  const { doc } = exercise.id
+    ? await payloadPatch<{ doc: PayloadExercise }>(
+        `exercises/${exercise.id}`,
+        body,
+      )
+    : await payloadPost<{ doc: PayloadExercise }>("exercises", body);
+  return mapExercise(doc);
 }
 
 export async function getSessions(): Promise<TrainingSession[]> {
@@ -118,17 +142,4 @@ export async function deleteSession(id: string): Promise<void> {
   await payloadDelete(`sessions/${id}`);
 }
 
-export async function createExercise(exercise: {
-  name: string;
-  category: Exercise["category"];
-  focus: string;
-  description?: string;
-  defaultRatings: Omit<RatingDimension, "score">[];
-}): Promise<Exercise> {
-  const body = exerciseToPayloadBody(exercise);
-  const { doc } = await payloadPost<{ doc: PayloadExercise }>(
-    "exercises",
-    body,
-  );
-  return mapExercise(doc);
-}
+

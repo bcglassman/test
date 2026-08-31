@@ -70,6 +70,7 @@ export interface Config {
     users: User;
     dogs: Dog;
     plans: Plan;
+    'rating-dimensions': RatingDimension;
     exercises: Exercise;
     sessions: Session;
     media: Media;
@@ -83,6 +84,7 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     dogs: DogsSelect<false> | DogsSelect<true>;
     plans: PlansSelect<false> | PlansSelect<true>;
+    'rating-dimensions': RatingDimensionsSelect<false> | RatingDimensionsSelect<true>;
     exercises: ExercisesSelect<false> | ExercisesSelect<true>;
     sessions: SessionsSelect<false> | SessionsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -300,27 +302,110 @@ export interface Plan {
 export interface Exercise {
   id: number;
   name: string;
-  category: 'Strength' | 'Mobility' | 'Coordination' | 'Cardio' | 'Skill';
   /**
-   * Body area / focus, e.g. "Hind Limb", "General".
+   * The type of exercise, not the body part — that is what Focus is for.
    */
-  focus: string;
+  category:
+    | 'Walking & General Activity'
+    | 'Conditioning'
+    | 'Strength'
+    | 'Coordination & Proprioception'
+    | 'Mobility'
+    | 'Speed & Power'
+    | 'Recovery / Low Impact';
+  /**
+   * What it trains. Suggested values: General, Cardio, Conditioning, Muscular Endurance, Strength, Power, Hind Limb, Forelimb, Core, Spine, Neck, Mobility, Balance, Stability, Coordination, Proprioception, Body Awareness, Paw Awareness, Movement Control, Directional Control, Gait, Recovery, Low Impact. Custom values are allowed.
+   */
+  focus?: string[] | null;
+  /**
+   * What the exercise involves and why it is done.
+   */
   description?: string | null;
   /**
-   * Rating dimensions pre-filled when logging a new session for this exercise.
+   * Decides which fields the session form offers for this exercise.
+   */
+  trackingMethods?:
+    | (
+        | 'Duration'
+        | 'Active Duration'
+        | 'Distance'
+        | 'Reps'
+        | 'Reps per Side'
+        | 'Sets'
+        | 'Passes'
+        | 'Intervals'
+        | 'Hold Time'
+        | 'Steps'
+      )[]
+    | null;
+  /**
+   * Default unit for the primary tracking method.
+   */
+  primaryUnit?:
+    | ('Seconds' | 'Minutes' | 'Hours' | 'Meters' | 'Kilometers' | 'Miles' | 'Reps' | 'Passes' | 'Steps' | 'Intervals')
+    | null;
+  /**
+   * Normally required. Suggested values: None, Treadmill, Carpetmill, Slatmill, Underwater Treadmill, Pool, Cavaletti Poles, Platform, Step, Balance Pad, Cones, Target. Custom values are allowed.
+   */
+  equipment?: string[] | null;
+  /**
+   * What good execution and setup look like.
+   */
+  techniqueNotes?: string | null;
+  /**
+   * Presented when logging this exercise, in this order. References the global Rating Library rather than copying it; removing one here leaves the dimension itself alone.
+   */
+  defaultRatingDimensions?: (number | RatingDimension)[] | null;
+  /**
+   * Archived exercises drop out of new-session selection but keep every session that referenced them.
+   */
+  status: 'active' | 'archived';
+  /**
+   * Superseded by defaultRatingDimensions. Kept so exercises defined before the Rating Library became a collection aren't lost; the seed migrates them across.
    */
   defaultRatings?:
     | {
         key: string;
         label: string;
         max: number;
-        /**
-         * Optional rubric: exactly 5 short descriptions for scores 1-5, e.g. "Maintains Good Form" for a 4.
-         */
         scale?: string[] | null;
         id?: string | null;
       }[]
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rating-dimensions".
+ */
+export interface RatingDimension {
+  id: number;
+  /**
+   * Stable identifier; scores are stored against it.
+   */
+  key: string;
+  label: string;
+  /**
+   * Grouping in the picker, e.g. Movement, Strength.
+   */
+  category?: string | null;
+  /**
+   * What this dimension is judging.
+   */
+  description?: string | null;
+  /**
+   * Top of the scale. 5 throughout the seeded library.
+   */
+  max: number;
+  /**
+   * The 1-5 descriptors, worst to best. For a workload dimension such as Intensity, 5 is the heaviest workload rather than the best performance.
+   */
+  scale?: string[] | null;
+  /**
+   * Hidden from the picker; existing uses are untouched.
+   */
+  archived?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -343,6 +428,29 @@ export interface Session {
     | {
         setNumber: number;
         reps?: number | null;
+        /**
+         * For exercises tracked per side.
+         */
+        repsLeft?: number | null;
+        repsRight?: number | null;
+        /**
+         * Elapsed time for this set, in seconds.
+         */
+        durationSeconds?: number | null;
+        /**
+         * Time actually moving — belt time, swim time — as opposed to elapsed.
+         */
+        activeDurationSeconds?: number | null;
+        /**
+         * Stored in metres whatever unit is displayed.
+         */
+        distanceMeters?: number | null;
+        intervals?: number | null;
+        /**
+         * For static holds.
+         */
+        holdSeconds?: number | null;
+        steps?: number | null;
         /**
          * For exercises counted in passes rather than reps (e.g. cavaletti).
          */
@@ -489,6 +597,10 @@ export interface PayloadLockedDocument {
         value: number | Plan;
       } | null)
     | ({
+        relationTo: 'rating-dimensions';
+        value: number | RatingDimension;
+      } | null)
+    | ({
         relationTo: 'exercises';
         value: number | Exercise;
       } | null)
@@ -625,6 +737,21 @@ export interface PlansSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rating-dimensions_select".
+ */
+export interface RatingDimensionsSelect<T extends boolean = true> {
+  key?: T;
+  label?: T;
+  category?: T;
+  description?: T;
+  max?: T;
+  scale?: T;
+  archived?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "exercises_select".
  */
 export interface ExercisesSelect<T extends boolean = true> {
@@ -632,6 +759,12 @@ export interface ExercisesSelect<T extends boolean = true> {
   category?: T;
   focus?: T;
   description?: T;
+  trackingMethods?: T;
+  primaryUnit?: T;
+  equipment?: T;
+  techniqueNotes?: T;
+  defaultRatingDimensions?: T;
+  status?: T;
   defaultRatings?:
     | T
     | {
@@ -657,6 +790,14 @@ export interface SessionsSelect<T extends boolean = true> {
     | {
         setNumber?: T;
         reps?: T;
+        repsLeft?: T;
+        repsRight?: T;
+        durationSeconds?: T;
+        activeDurationSeconds?: T;
+        distanceMeters?: T;
+        intervals?: T;
+        holdSeconds?: T;
+        steps?: T;
         passes?: T;
         notes?: T;
         watchItems?: T;

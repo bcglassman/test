@@ -104,22 +104,42 @@ export interface RatingDimension {
   scale?: string[];
 }
 
-export type ExerciseCategory =
-  | "Strength"
-  | "Mobility"
-  | "Coordination"
-  | "Cardio"
-  | "Skill";
+export type { ExerciseCategory } from "./taxonomy";
 
+/**
+ * One entry in the global Rating Library. Exercises point at these rather
+ * than carrying copies, so a dimension is worded once; a logged session
+ * still snapshots what it used, so editing one here never rewrites history.
+ */
+export interface RatingDimensionDoc extends RatingDefinition {
+  id: string;
+  /** Grouping in the picker, e.g. "Movement". */
+  category?: string;
+  description?: string;
+  archived?: boolean;
+}
+
+/**
+ * A global exercise definition. Never dog-specific: what a dog actually did
+ * belongs to the session.
+ */
 export interface Exercise {
   id: string;
   name: string;
-  category: ExerciseCategory;
-  /** Body area / focus, e.g. "Hind Limb", "General". */
-  focus: string;
+  category: import("./taxonomy").ExerciseCategory;
+  /** What it trains — multiple values, custom ones allowed. */
+  focus: string[];
   description?: string;
-  /** Default rating dimensions used when logging a new session. */
-  defaultRatings: Omit<RatingDimension, "score">[];
+  /** Decides which fields the session form offers. */
+  trackingMethods: import("./taxonomy").TrackingMethod[];
+  primaryUnit?: import("./taxonomy").Unit;
+  equipment: string[];
+  techniqueNotes?: string;
+  /** Rating Library ids, in the order they should be presented. */
+  defaultRatingDimensionIds: string[];
+  /** Joined definitions, when the caller asked for them. */
+  defaultRatings: RatingDefinition[];
+  status: import("./taxonomy").ExerciseStatus;
 }
 
 /** The rows of the weekly plan calendar, in display order. */
@@ -219,8 +239,20 @@ export interface WatchItem {
 export interface SessionSet {
   setNumber: number;
   reps?: number;
+  /** For exercises tracked per side. */
+  repsLeft?: number;
+  repsRight?: number;
   /** Some exercises log "passes" instead of reps (e.g. cavaletti). */
   passes?: number;
+  /** Elapsed time for the set. */
+  durationSeconds?: number;
+  /** Time actually moving, as opposed to elapsed. */
+  activeDurationSeconds?: number;
+  /** Always metres internally; the exercise's primaryUnit decides display. */
+  distanceMeters?: number;
+  intervals?: number;
+  holdSeconds?: number;
+  steps?: number;
   notes?: string;
   /** Short things to watch for in this set, e.g. "left knee flaring". */
   watchItems?: WatchItem[];

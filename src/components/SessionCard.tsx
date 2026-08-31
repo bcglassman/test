@@ -68,7 +68,8 @@ export function SessionCard({ session }: { session: SessionWithExercise }) {
               {exercise.name}
             </h2>
             <p className="text-sm text-[var(--color-ink-soft)]">
-              {exercise.category} · {exercise.focus}
+              {exercise.category}
+              {exercise.focus.length > 0 && ` · ${exercise.focus.join(", ")}`}
             </p>
             <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-ink-soft)]">
               <CalendarIcon className="h-3.5 w-3.5" />
@@ -259,12 +260,24 @@ function SetBlock({
       setIsSaving(false);
     }
   }
-  const work =
-    set.passes !== undefined
-      ? `${set.passes} passes`
-      : set.reps !== undefined
-        ? `${set.reps} reps`
-        : undefined;
+  // Everything this set recorded, in the order it reads naturally.
+  const work = [
+    set.reps !== undefined && `${set.reps} reps`,
+    set.repsLeft !== undefined && `${set.repsLeft}L`,
+    set.repsRight !== undefined && `${set.repsRight}R`,
+    set.passes !== undefined && `${set.passes} passes`,
+    set.steps !== undefined && `${set.steps} steps`,
+    set.intervals !== undefined && `${set.intervals} intervals`,
+    set.distanceMeters !== undefined &&
+      `${Math.round((set.distanceMeters / 1000) * 100) / 100} km`,
+    set.durationSeconds !== undefined &&
+      `${Math.round(set.durationSeconds / 60)} min`,
+    set.activeDurationSeconds !== undefined &&
+      `${set.activeDurationSeconds}s active`,
+    set.holdSeconds !== undefined && `${set.holdSeconds}s hold`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   // Timestamps point at the set's clip. With more than one, the first is
   // the one they mean; with none there is nothing to jump to, so the

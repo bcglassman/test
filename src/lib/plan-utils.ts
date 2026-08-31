@@ -92,11 +92,13 @@ function plannedMinutes(item: PlanItem): number {
  * plan item claims it.
  */
 const CATEGORY_FROM_EXERCISE: Record<string, PlanCategory> = {
-  Cardio: "cardio",
+  "Walking & General Activity": "cardio",
+  Conditioning: "cardio",
   Strength: "strength",
+  "Coordination & Proprioception": "bodyAwareness",
   Mobility: "flexibility",
-  Coordination: "bodyAwareness",
-  Skill: "sport",
+  "Speed & Power": "sport",
+  "Recovery / Low Impact": "cardio",
 };
 
 export function planCategoryForSession(

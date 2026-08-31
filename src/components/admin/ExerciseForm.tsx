@@ -1,157 +1,161 @@
 "use client";
 
 import { useState } from "react";
-import type { ExerciseCategory } from "@/lib/types";
-import { createExercise } from "@/lib/data-source";
+import { useRouter } from "next/navigation";
+import { CategoryIcon, SparkleIcon } from "@/components/icons";
+import { TagPicker } from "./TagPicker";
+import { RatingDimensionPicker } from "./RatingDimensionPicker";
+import { useSessions } from "@/lib/sessions-context";
+import { useToast } from "@/components/Toast";
+import { suggestExerciseDetails } from "@/lib/actions/suggest-exercise";
+import type { Exercise } from "@/lib/types";
 import {
-  suggestExerciseDetails,
-  type SuggestedExerciseDetails,
-} from "@/lib/actions/suggest-exercise";
-import { RATING_LIBRARY } from "@/lib/rating-library";
-import {
-  RatingDimensionEditor,
-  type RatingDraft,
-} from "./RatingDimensionEditor";
-import { CategoryIcon, PlusIcon, SparkleIcon } from "@/components/icons";
+  EQUIPMENT_VALUES,
+  EXERCISE_CATEGORIES,
+  FOCUS_VALUES,
+  TRACKING_METHODS,
+  UNITS,
+  UNITS_FOR_TRACKING,
+  type ExerciseCategory,
+  type TrackingMethod,
+  type Unit,
+} from "@/lib/taxonomy";
 
-const CATEGORIES: ExerciseCategory[] = [
-  "Strength",
-  "Mobility",
-  "Coordination",
-  "Cardio",
-  "Skill",
-];
+type Draft = Omit<Exercise, "defaultRatings">;
 
-function slugify(label: string): string {
-  return (
-    label
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "") || "field"
-  );
+export function blankExercise(): Draft {
+  return {
+    id: "",
+    name: "",
+    category: "Walking & General Activity",
+    focus: [],
+    trackingMethods: [],
+    equipment: [],
+    defaultRatingDimensionIds: [],
+    status: "active",
+  };
 }
 
-export function ExerciseForm({
-  onCreated,
-  onCancel,
-}: {
-  onCreated: () => void;
-  onCancel: () => void;
-}) {
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState<ExerciseCategory>("Strength");
-  const [focus, setFocus] = useState("");
-  const [description, setDescription] = useState("");
-  const [ratings, setRatings] = useState<RatingDraft[]>([
-    RATING_LIBRARY[0], // Form
-    RATING_LIBRARY[1], // Control
-  ]);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+const field =
+  "w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]";
 
-  function applySuggestion(s: SuggestedExerciseDetails) {
-    setCategory(s.category);
-    setFocus(s.focus);
-    setDescription(s.description);
-    setRatings(s.defaultRatings);
+export function ExerciseForm({ initial }: { initial: Draft }) {
+  const { ratingDimensions, saveExercise } = useSessions();
+  const { showToast } = useToast();
+  const router = useRouter();
+  const [form, setForm] = useState<Draft>(initial);
+  const [saving, setSaving] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isNew = !initial.id;
+
+  function patch(next: Partial<Draft>) {
+    setForm((f) => ({ ...f, ...next }));
   }
 
-  async function handleSuggest() {
-    if (!name.trim() || aiLoading) return;
-    setAiError(null);
+  /** Units worth offering, given what the exercise actually tracks. */
+  const relevantUnits: readonly Unit[] =
+    form.trackingMethods.length === 0
+      ? UNITS
+      : Array.from(
+          new Set(form.trackingMethods.flatMap((m) => UNITS_FOR_TRACKING[m])),
+        );
+
+  async function runAi() {
+    if (!form.name.trim()) {
+      setError("Give the exercise a name first.");
+      return;
+    }
+    setError(null);
     setAiLoading(true);
     try {
-      applySuggestion(await suggestExerciseDetails(name));
+      const s = await suggestExerciseDetails(form.name);
+      const byKey = new Map(ratingDimensions.map((d) => [d.key, d.id]));
+      patch({
+        category: s.category,
+        focus: s.focus,
+        description: s.description,
+        trackingMethods: s.trackingMethods,
+        primaryUnit: s.primaryUnit,
+        equipment: s.equipment,
+        techniqueNotes: s.techniqueNotes,
+        defaultRatingDimensionIds: s.ratingKeys
+          .map((k) => byKey.get(k))
+          .filter((id): id is string => Boolean(id)),
+      });
     } catch {
-      setAiError("Couldn't get an AI suggestion. You can fill this in yourself.");
+      setError("Couldn't get an AI suggestion. Fill the fields in by hand.");
     } finally {
       setAiLoading(false);
     }
   }
 
-  function updateRating(index: number, patch: Partial<RatingDraft>) {
-    setRatings((r) => r.map((row, i) => (i === index ? { ...row, ...patch } : row)));
-  }
-
-  function addRating() {
-    setRatings((r) => [...r, { key: "", label: "", max: 5 }]);
-  }
-
-  function removeRating(index: number) {
-    setRatings((r) => r.filter((_, i) => i !== index));
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaveError(null);
-    setIsSaving(true);
+    if (!form.name.trim()) {
+      setError("Give the exercise a name.");
+      return;
+    }
+    setError(null);
+    setSaving(true);
     try {
-      await createExercise({
-        name: name.trim(),
-        category,
-        focus: focus.trim(),
-        description: description.trim() || undefined,
-        defaultRatings: ratings
-          .filter((r) => r.label.trim())
-          .map((r) => ({ ...r, key: r.key.trim() || slugify(r.label) })),
-      });
-      onCreated();
+      const saved = await saveExercise({ ...form, name: form.name.trim() });
+      showToast(isNew ? "Exercise created" : "Exercise saved");
+      router.push(`/exercises/${saved.id}`);
     } catch {
-      setSaveError("Couldn't save this exercise. Make sure you're logged in.");
+      setError("Couldn't save. Make sure you're logged in.");
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-xl">
-      <h1 className="mb-6 font-serif text-2xl text-[var(--color-ink)]">
-        New Exercise
-      </h1>
-
-      <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <div>
+        <span className="mb-1.5 flex items-center justify-between text-sm font-medium text-[var(--color-ink-soft)]">
           Name
+          {isNew && (
+            <button
+              type="button"
+              onClick={runAi}
+              disabled={aiLoading}
+              title="Fill in the rest from the name"
+              className="flex items-center gap-1 text-xs font-medium text-[var(--color-sage-dark)] hover:underline disabled:opacity-50"
+            >
+              <SparkleIcon className={`h-4 w-4 ${aiLoading ? "animate-spin" : ""}`} />
+              {aiLoading ? "Thinking…" : "Fill in from the name"}
+            </button>
+          )}
         </span>
-        <div className="relative">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Sit to Stand"
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] py-2.5 pl-3 pr-11 text-sm outline-none focus:border-[var(--color-sage)]"
-          />
-          <button
-            type="button"
-            onClick={handleSuggest}
-            disabled={!name.trim() || aiLoading}
-            title="Pre-fill the rest with AI"
-            aria-label="Pre-fill the rest with AI"
-            className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-[var(--color-sage-dark)] hover:bg-[var(--color-sage-tint)] disabled:cursor-not-allowed disabled:opacity-30"
-          >
-            <SparkleIcon className={`h-5 w-5 ${aiLoading ? "animate-spin" : ""}`} />
-          </button>
-        </div>
-      </label>
-      {aiError && (
-        <p className="mt-1.5 text-xs text-[var(--color-down)]">{aiError}</p>
-      )}
+        <input
+          value={form.name}
+          onChange={(e) => patch({ name: e.target.value })}
+          placeholder="e.g. Incline Carpetmill Intervals"
+          autoFocus
+          className={field}
+        />
+      </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
             Category
+            <span className="ml-1.5 font-normal">· the type of exercise</span>
           </span>
-          <div className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5">
-            <CategoryIcon category={category} className="h-4 w-4 shrink-0 text-[var(--color-sage-dark)]" />
+          <div className="flex items-center gap-2">
+            <CategoryIcon
+              category={form.category}
+              className="h-5 w-5 shrink-0 text-[var(--color-sage-dark)]"
+            />
             <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as ExerciseCategory)}
-              className="w-full bg-transparent text-sm outline-none"
+              value={form.category}
+              onChange={(e) =>
+                patch({ category: e.target.value as ExerciseCategory })
+              }
+              className={field}
             >
-              {CATEGORIES.map((c) => (
+              {EXERCISE_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
@@ -162,83 +166,118 @@ export function ExerciseForm({
 
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
-            Focus
+            Primary unit
+            <span className="ml-1.5 font-normal">· optional</span>
           </span>
-          <input
-            value={focus}
-            onChange={(e) => setFocus(e.target.value)}
-            placeholder="e.g. Hind Limb"
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
-          />
+          <select
+            value={form.primaryUnit ?? ""}
+            onChange={(e) =>
+              patch({ primaryUnit: (e.target.value || undefined) as Unit })
+            }
+            className={field}
+          >
+            <option value="">—</option>
+            {relevantUnits.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
 
-      <label className="mt-5 block">
+      <TagPicker
+        label="Focus"
+        hint="what it trains"
+        options={FOCUS_VALUES}
+        selected={form.focus}
+        onChange={(focus) => patch({ focus })}
+      />
+
+      <label className="block">
         <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
           Description
         </span>
         <textarea
-          rows={2}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-sage)]"
+          rows={4}
+          value={form.description ?? ""}
+          onChange={(e) => patch({ description: e.target.value || undefined })}
+          placeholder="What the exercise involves and why it is performed"
+          className={field}
         />
       </label>
 
-      <div className="mt-5">
-        <span className="mb-2 block text-sm font-medium text-[var(--color-ink-soft)]">
-          Default rating dimensions
-        </span>
-        <p className="mb-2 text-xs text-[var(--color-ink-soft)]">
-          Pick a standard dimension from the library for consistent wording
-          across exercises, or type your own and use the sparkle button to
-          write a 1–5 scale for it.
-        </p>
-        <div className="flex flex-col gap-2">
-          {ratings.map((r, i) => (
-            <RatingDimensionEditor
-              key={i}
-              rating={r}
-              exerciseName={name}
-              onChange={(patch) => updateRating(i, patch)}
-              onRemove={() => removeRating(i)}
-            />
-          ))}
-          {ratings.length < 5 ? (
-            <button
-              type="button"
-              onClick={addRating}
-              className="flex w-fit items-center gap-1.5 text-sm font-medium text-[var(--color-sage-dark)] hover:underline"
-            >
-              <PlusIcon className="h-3.5 w-3.5" />
-              Add dimension
-            </button>
-          ) : (
-            <p className="text-xs text-[var(--color-ink-soft)]">
-              Maximum of 5 rating dimensions per exercise.
-            </p>
-          )}
-        </div>
-      </div>
+      <TagPicker
+        label="Tracking"
+        hint="decides which fields the session form offers"
+        options={TRACKING_METHODS}
+        selected={form.trackingMethods}
+        onChange={(v) => patch({ trackingMethods: v as TrackingMethod[] })}
+        allowCustom={false}
+      />
 
-      {saveError && (
-        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-[var(--color-down)]">
-          {saveError}
+      <TagPicker
+        label="Equipment"
+        hint="optional"
+        options={EQUIPMENT_VALUES}
+        selected={form.equipment}
+        onChange={(equipment) => patch({ equipment })}
+      />
+
+      <label className="block">
+        <span className="mb-1.5 block text-sm font-medium text-[var(--color-ink-soft)]">
+          Technique / setup notes
+        </span>
+        <textarea
+          rows={3}
+          value={form.techniqueNotes ?? ""}
+          onChange={(e) =>
+            patch({ techniqueNotes: e.target.value || undefined })
+          }
+          placeholder="What good execution looks like, and what would mean easing off"
+          className={field}
+        />
+      </label>
+
+      <RatingDimensionPicker
+        library={ratingDimensions}
+        selectedIds={form.defaultRatingDimensionIds}
+        onChange={(defaultRatingDimensionIds) =>
+          patch({ defaultRatingDimensionIds })
+        }
+      />
+
+      <label className="flex items-center gap-2 text-sm text-[var(--color-ink)]">
+        <input
+          type="checkbox"
+          checked={form.status === "archived"}
+          onChange={(e) =>
+            patch({ status: e.target.checked ? "archived" : "active" })
+          }
+          className="accent-[var(--color-sage)]"
+        />
+        Archived — keeps every session that used it, but drops out of
+        new-session selection
+      </label>
+
+      {error && (
+        <p role="alert" className="text-sm text-[var(--color-down)]">
+          {error}
         </p>
       )}
 
-      <div className="mt-8 flex gap-3">
+      <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={isSaving || !name.trim() || !focus.trim()}
-          className="rounded-full bg-[var(--color-sage)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-sage-dark)] disabled:opacity-50"
+          disabled={saving}
+          className="rounded-full bg-[var(--color-sage)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-sage-dark)] disabled:opacity-60"
         >
-          {isSaving ? "Saving…" : "Create Exercise"}
+          {saving ? "Saving…" : isNew ? "Create exercise" : "Save exercise"}
         </button>
         <button
           type="button"
-          onClick={onCancel}
-          className="rounded-full border border-[var(--color-border)] px-6 py-2.5 text-sm font-medium text-[var(--color-ink)] hover:bg-[var(--color-cream)]"
+          onClick={() => router.back()}
+          className="rounded-full border border-[var(--color-border)] px-6 py-2.5 text-sm font-medium text-[var(--color-ink)] hover:bg-white"
         >
           Cancel
         </button>

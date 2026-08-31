@@ -25,6 +25,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { RatingDefModal } from "./RatingDefModal";
 import { WatchItemsEditor } from "./WatchItemsEditor";
 import { NoteSparkle } from "./NoteSparkle";
+import { TrackingFields } from "./TrackingFields";
 import type { NoteContext, NoteSetContext } from "@/lib/actions/refine-note";
 import { mediaFromFile } from "@/lib/media-utils";
 import {
@@ -78,9 +79,19 @@ function blankSet(
 ): SessionSet {
   return {
     setNumber,
-    // Carry the previous set's rep count forward — sets usually repeat.
-    reps: template?.reps ?? 6,
+    // Carry the previous set's counts forward — sets usually repeat — but
+    // don't invent any. An exercise that doesn't track reps shouldn't
+    // acquire a rep count just for having a set.
+    reps: template?.reps,
+    repsLeft: template?.repsLeft,
+    repsRight: template?.repsRight,
     passes: template?.passes,
+    durationSeconds: template?.durationSeconds,
+    activeDurationSeconds: template?.activeDurationSeconds,
+    distanceMeters: template?.distanceMeters,
+    intervals: template?.intervals,
+    holdSeconds: template?.holdSeconds,
+    steps: template?.steps,
     notes: "",
     watchItems: [],
     ratings: ratingsForDefs(defs),
@@ -90,6 +101,33 @@ function blankSet(
 /** Re-seeds every set's ratings against a new set of dimensions, keeping the rest. */
 function setsForDefs(defs: RatingDefinition[], existing: SessionSet[]): SessionSet[] {
   return existing.map((set) => ({ ...set, ratings: ratingsForDefs(defs, set) }));
+}
+
+/**
+ * Drops measurements the newly chosen exercise doesn't track. Switching
+ * from step-ups to a walk would otherwise leave a rep count behind, and the
+ * feed would report reps for a walk.
+ */
+function clearUntrackedMeasures(
+  set: SessionSet,
+  methods: Exercise["trackingMethods"],
+): SessionSet {
+  const keep = new Set(methods);
+  return {
+    ...set,
+    reps: keep.has("Reps") ? set.reps : undefined,
+    repsLeft: keep.has("Reps per Side") ? set.repsLeft : undefined,
+    repsRight: keep.has("Reps per Side") ? set.repsRight : undefined,
+    passes: keep.has("Passes") ? set.passes : undefined,
+    durationSeconds: keep.has("Duration") ? set.durationSeconds : undefined,
+    activeDurationSeconds: keep.has("Active Duration")
+      ? set.activeDurationSeconds
+      : undefined,
+    distanceMeters: keep.has("Distance") ? set.distanceMeters : undefined,
+    intervals: keep.has("Intervals") ? set.intervals : undefined,
+    holdSeconds: keep.has("Hold Time") ? set.holdSeconds : undefined,
+    steps: keep.has("Steps") ? set.steps : undefined,
+  };
 }
 
 function blankFromExercise(exercise: Exercise): TrainingSession {
@@ -294,7 +332,9 @@ export function SessionForm({
       ...f,
       exerciseId,
       ratingDefs: next.defaultRatings,
-      sets: setsForDefs(next.defaultRatings, f.sets),
+      sets: setsForDefs(next.defaultRatings, f.sets).map((s) =>
+        clearUntrackedMeasures(s, next.trackingMethods),
+      ),
     }));
   }
 
@@ -487,7 +527,7 @@ export function SessionForm({
       dogObservations: dog?.movementObservations,
       exerciseName: exercise.name,
       exerciseCategory: exercise.category,
-      exerciseFocus: exercise.focus,
+      exerciseFocus: exercise.focus.join(", ") || undefined,
       environment: form.environment,
       weather: formatWeather(form.weather),
       restLabel: form.restLabel,
@@ -564,7 +604,8 @@ export function SessionForm({
           </span>
           <div className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] px-3 py-2.5 text-sm text-[var(--color-ink)]">
             <CategoryIcon category={exercise.category} className="h-4 w-4 text-[var(--color-sage-dark)]" />
-            {exercise.category} · {exercise.focus}
+            {exercise.category}
+            {exercise.focus.length > 0 && ` · ${exercise.focus.join(", ")}`}
           </div>
         </div>
       </div>
@@ -756,7 +797,6 @@ export function SessionForm({
           {form.sets.map((set) => {
             const setMedia = sortedMedia.filter((m) => m.setNumber === set.setNumber);
             const busy = isUploading && uploadingSet === set.setNumber;
-            const usesPasses = set.passes !== undefined;
             return (
               <div
                 key={set.setNumber}
@@ -779,39 +819,12 @@ export function SessionForm({
                 </div>
                 <div className="p-4">
 
-                <div className="grid grid-cols-2 gap-4">
-                  <label className="block">
-                    <span className="mb-1.5 block text-xs font-medium text-[var(--color-ink-soft)]">
-                      {usesPasses ? "Passes" : "Reps"}
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={(usesPasses ? set.passes : set.reps) ?? ""}
-                      onChange={(e) => {
-                        const v = e.target.value === "" ? undefined : Number(e.target.value);
-                        updateSet(set.setNumber, usesPasses ? { passes: v } : { reps: v });
-                      }}
-                      className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-cream)] px-3 py-2 text-sm outline-none focus:border-[var(--color-sage)]"
-                    />
-                  </label>
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateSet(
-                          set.setNumber,
-                          usesPasses
-                            ? { reps: set.passes, passes: undefined }
-                            : { passes: set.reps, reps: undefined },
-                        )
-                      }
-                      className="pb-2 text-xs font-medium text-[var(--color-sage-dark)] hover:underline"
-                    >
-                      Count in {usesPasses ? "reps" : "passes"} instead
-                    </button>
-                  </div>
-                </div>
+                <TrackingFields
+                  set={set}
+                  trackingMethods={exercise.trackingMethods}
+                  primaryUnit={exercise.primaryUnit}
+                  onChange={(patch) => updateSet(set.setNumber, patch)}
+                />
 
                 {ratingDefs.length === 0 ? (
                   <div className="mt-4 rounded-lg border-2 border-dashed border-[var(--color-border)] p-6 text-center">

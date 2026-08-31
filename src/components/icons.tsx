@@ -245,13 +245,13 @@ export function CategoryIcon({
   switch (category) {
     case "Strength":
       return <StrengthIcon {...props} />;
-    case "Coordination":
+    case "Coordination & Proprioception":
       return <CoordinationIcon {...props} />;
-    case "Cardio":
+    case "Conditioning":
       return <CardioIcon {...props} />;
     case "Mobility":
       return <MobilityIcon {...props} />;
-    case "Skill":
+    case "Speed & Power":
       return <SkillIcon {...props} />;
     default:
       return <PawIcon {...props} />;

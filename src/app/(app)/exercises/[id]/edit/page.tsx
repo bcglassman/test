@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Header } from "@/components/Header";
-import { ExerciseForm, blankExercise } from "@/components/admin/ExerciseForm";
+import { ExerciseForm } from "@/components/admin/ExerciseForm";
 import { useSessions } from "@/lib/sessions-context";
 
-export default function NewExercisePage() {
-  const { user, loading, authLoading } = useSessions();
+export default function EditExercisePage() {
+  const params = useParams<{ id: string }>();
+  const { exercises, user, loading, authLoading } = useSessions();
+  const exercise = exercises.find((e) => e.id === params.id);
 
   if (loading || authLoading) {
     return (
@@ -19,19 +22,19 @@ export default function NewExercisePage() {
     );
   }
 
-  if (!user) {
+  if (!user || !exercise) {
     return (
       <div className="flex min-h-screen flex-col">
         <Header active="exercises" />
         <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-16 text-center">
           <h1 className="font-serif text-2xl text-[var(--color-ink)]">
-            Log in to add an exercise
+            {user ? "No such exercise" : "Log in to edit exercises"}
           </h1>
           <Link
-            href="/admin/login"
-            className="mt-6 rounded-full bg-[var(--color-sage)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-sage-dark)]"
+            href={user ? "/exercises" : "/admin/login"}
+            className="mt-6 text-sm underline"
           >
-            Log in
+            {user ? "Back to the library" : "Log in"}
           </Link>
         </main>
       </div>
@@ -43,15 +46,16 @@ export default function NewExercisePage() {
       <Header active="exercises" />
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">
         <Link
-          href="/exercises"
+          href={`/exercises/${exercise.id}`}
           className="text-sm text-[var(--color-ink-soft)] hover:underline"
         >
-          ← Exercise Library
+          ← {exercise.name}
         </Link>
         <h1 className="mb-6 font-serif text-2xl text-[var(--color-ink)]">
-          New exercise
+          Edit exercise
         </h1>
-        <ExerciseForm initial={blankExercise()} />
+        {/* Keyed so switching exercise resets the form rather than merging. */}
+        <ExerciseForm key={exercise.id} initial={exercise} />
       </main>
     </div>
   );
