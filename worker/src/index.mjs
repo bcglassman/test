@@ -14,6 +14,7 @@ import { ingestSource } from './ingest/run.mjs';
 import * as eventbrite from './ingest/sources/eventbrite.mjs';
 import { enrichPending } from './enrich/run.mjs';
 import { createModelCaller, DEFAULT_MODEL, DEFAULT_EFFORT } from './enrich/claude.mjs';
+import { scheduleDays, findGaps, report, tomorrow, today } from './schedule/run.mjs';
 
 const ADAPTERS = new Map([[eventbrite.key, eventbrite]]);
 
@@ -113,6 +114,30 @@ async function enrich(pool) {
   }
 }
 
+async function schedule(pool) {
+  const dryRun = has('dry-run');
+  const days = Number(arg('days') ?? 3);
+  const from = arg('from') ?? tomorrow();
+
+  log.step(`schedule · ${days} day(s) from ${from}${dryRun ? ' — dry run' : ''}`);
+  const results = await scheduleDays(pool, { from, days, dryRun });
+  report(results);
+}
+
+async function gaps(pool) {
+  const days = Number(arg('days') ?? 7);
+  const from = arg('from') ?? today();
+
+  const found = await findGaps(pool, { from, days });
+  if (found.length === 0) {
+    log.info(`No gaps in the next ${days} day(s).`);
+    return;
+  }
+  log.warn(`${found.length} unfilled slot(s):`);
+  for (const gap of found) log.info(`  ${gap.date}  ${gap.slot}  ${gap.type}`);
+  process.exitCode = 1;   // so a cron can alert on it
+}
+
 async function main() {
   const command = process.argv[2];
   const pool = createPool();
@@ -120,10 +145,14 @@ async function main() {
     if (command === 'sources') await listSources(pool);
     else if (command === 'ingest') await ingest(pool);
     else if (command === 'enrich') await enrich(pool);
+    else if (command === 'schedule') await schedule(pool);
+    else if (command === 'gaps') await gaps(pool);
     else {
-      console.log('Usage: node src/index.mjs <sources|ingest|enrich> [options]\n' +
-                  '  ingest  [--source <slug>] [--dry-run]\n' +
-                  '  enrich  [--limit <n>] [--model <id>] [--effort <level>] [--dry-run]');
+      console.log('Usage: node src/index.mjs <sources|ingest|enrich|schedule|gaps> [options]\n' +
+                  '  ingest    [--source <slug>] [--dry-run]\n' +
+                  '  enrich    [--limit <n>] [--model <id>] [--effort <level>] [--dry-run]\n' +
+                  '  schedule  [--from <YYYY-MM-DD>] [--days <n>] [--dry-run]\n' +
+                  '  gaps      [--from <YYYY-MM-DD>] [--days <n>]');
       process.exitCode = 1;
     }
   } finally {

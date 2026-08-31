@@ -64,5 +64,5 @@ See `docs/directus-setup.md`.
 
 ## Status
 
-Schema, Directus configuration, ingest with the first source adapter, and the
-enrichment pass. Daily publishing and the public site are not built yet.
+Schema, Directus configuration, and the worker: ingest, enrichment, and the daily
+post job. Channel variant generation, publishing and the public site are not built yet.

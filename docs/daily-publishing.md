@@ -118,3 +118,76 @@ If supply is thin in week one, `roundup` and `resource` posts are the buffer —
 post needs no new event supply at all, and there is a deep well of genuinely useful
 preparation content. Better a good resource post than a thin spotlight on something
 nobody should go to.
+
+---
+
+# Implementation
+
+Built in `worker/src/schedule/`.
+
+```sh
+node src/index.mjs schedule --from 2026-10-05 --days 4 --dry-run
+node src/index.mjs schedule --days 3      # run daily, a few days ahead
+node src/index.mjs gaps --days 7          # exits non-zero if any slot is unfilled
+```
+
+## Selection proposes; a person approves
+
+The job creates posts as **drafts**. It never sets `scheduled` or `published` — that is
+the approver's move and then the publish worker's. A bug in the scheduler cannot put
+anything in front of the public.
+
+Only `approved` activities are eligible, so the enrichment gate from migration 001 is
+upstream of everything here: nothing reaches a post without confirmed attributes.
+
+## Scoring is legible, not clever
+
+An editor who disagrees with a pick should be able to read why it won. Every score comes
+with its reasons, and the runners-up are shown alongside:
+
+```
+2026-10-06 morning  Padel Open Play
+    score 99: quality 74, +15 solo-friendly known, +10 newcomer norm known, starts in 5d
+    also considered: Sunrise Sea Swim (80), Thursday Tempo (37), Saturday Long Run (23)
+```
+
+| Signal | Weight | Why |
+|---|---|---|
+| `quality_score` | base | The editorial baseline |
+| Solo-friendly known | +15 | A listing that cannot answer the platform's central question makes a worse post |
+| Newcomer norm known | +10 | Same |
+| Active sponsorship | +20 | Paid placement moves up the queue |
+| Same category within 3 days | −30 | A feed that repeats itself stops being read |
+| Same organiser within 7 days | −40 | Same |
+| Activity spotlighted within 30 days | −60 | Heaviest: never the same event twice in a month |
+| Starts in under 2 days | −25 | Too soon to act on |
+| Starts more than 21 days out | −20 | Too far to feel current |
+
+**The rotation penalties deliberately outweigh the sponsorship boost.** Paid placement
+buys a lift, not the week — there is a test asserting that an unsponsored listing from a
+rested organiser still beats a sponsored one whose organiser ran yesterday. If that ever
+inverts, the feed becomes an ad channel and the audience leaves.
+
+An event that has already happened is **dropped**, not scored low. A post about a past
+event is not a weak post; it is a wrong one.
+
+Selection is deterministic — ties break on soonest start, then id — so the same inputs
+always produce the same schedule and a dry run tells you what the real run will do.
+
+## Gaps
+
+`scheduleDays` reports `gap` for any slot it could not fill, and `gaps` lists unfilled
+slots across a horizon and **exits non-zero**, so a cron can alert on it. A gap means
+nothing goes out that day. Fill it by approving more activities, or with a resource or
+roundup post — a resource post needs no new event supply at all.
+
+Watch the gap count as the supply signal. The demo above, run against five activities
+from three organisers, fills four days but visibly degrades by day four: the last pick
+carries −40 and −30 rotation penalties because there was nothing else left. That is what
+thin supply looks like before it becomes a missed day.
+
+## Concurrency
+
+Two simultaneous runs cannot double-book a slot: the insert relies on the
+`(scheduled_for, slot, type)` unique constraint with `ON CONFLICT DO NOTHING`, and there
+is a test that runs the job twice in parallel and asserts one post.

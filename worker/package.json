@@ -7,6 +7,8 @@
   "scripts": {
     "ingest": "node src/index.mjs ingest",
     "enrich": "node src/index.mjs enrich",
+    "schedule": "node src/index.mjs schedule",
+    "gaps": "node src/index.mjs gaps",
     "sources": "node src/index.mjs sources",
     "test": "node --test --test-concurrency=1 'test/*.test.mjs'"
   },

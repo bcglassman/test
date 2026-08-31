@@ -116,3 +116,25 @@ human to confirm. See `docs/enrichment.md` for the design and the verification r
 The run summary reports `verified`, `abstained` and `downgraded`. Downgraded means the
 model cited text that is not in the listing — those claims are reduced to unknown before
 a reviewer sees them.
+
+## Daily post job
+
+```sh
+node src/index.mjs schedule --days 3 --dry-run
+node src/index.mjs gaps --days 7
+```
+
+Fills the coming days' slots from the approved pool, rotating category and organiser, and
+creates posts as drafts for approval. `gaps` exits non-zero when a slot is unfilled, so a
+cron can alert before a day is silently missed. See `docs/daily-publishing.md`.
+
+## Suggested cron
+
+```
+0 2  * * *  worker  node src/index.mjs ingest
+0 3  * * *  worker  node src/index.mjs enrich --limit 40
+0 4  * * *  worker  node src/index.mjs schedule --days 4
+30 4 * * *  worker  node src/index.mjs gaps --days 5   # alerts on non-zero exit
+```
+
+Ingest before enrichment before scheduling: each reads what the previous one produced.
