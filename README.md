@@ -38,6 +38,7 @@ to prepare for one.
 | `docs/worker.md` | Ingest guarantees, the Eventbrite adapter, and how to add a source |
 | `docs/channel-copy.md` | Per-channel copy generation, validation and the repair round |
 | `docs/deployment.md` | Running it on DigitalOcean App Platform |
+| `docs/site.md` | The public site: routes, UI rules, and how to run it locally |
 | `schema/001_init.sql` | Postgres DDL for the core model, Directus-compatible |
 | `schema/002_accounts_and_supply.sql` | Accounts, interests, social proof, submissions, organiser claims |
 | `schema/003_assisted_publish_and_coaches.sql` | Assisted publishing state, coach directory and enquiries |
@@ -47,6 +48,7 @@ to prepare for one.
 | `.do/app.yaml` | DigitalOcean App Platform spec — services, scheduled jobs, database |
 | `directus/bootstrap/` | Idempotent script registering collections, field interfaces and access policies |
 | `worker/` | Ingest, enrichment and publishing — kept outside Directus |
+| `site/` | The public Next.js site |
 
 ## Stack
 
@@ -68,6 +70,8 @@ See `docs/directus-setup.md`.
 
 ## Status
 
-Schema, Directus configuration, and the worker: ingest, enrichment, the daily post
-job, and per-channel copy generation. The publish worker and the public site are
-not built yet.
+Schema, Directus configuration, the worker (ingest, enrichment, daily post job,
+channel copy), the public site, and the DigitalOcean deployment spec.
+
+The publish worker — pushing to Telegram and the assisted-WhatsApp page — is the
+remaining piece before posts actually go out.

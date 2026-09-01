@@ -1,0 +1,307 @@
+{
+  "activities": [
+    {
+      "id": "a1",
+      "slug": "tuesday-easy-8km",
+      "title": "Tuesday Easy 8km",
+      "category": {
+        "name": "Running & endurance",
+        "slug": "running-endurance"
+      },
+      "summary": "A friendly 8km along the East Coast park connector. Three pace groups, so nobody gets left behind, and kopi at the hawker centre after.",
+      "description": "We meet by the carpark at Area C, sort into three pace groups \u2014 around 7:00, 6:00 and 5:15 per km \u2014 and head east along the connector.\n\nNobody gets dropped. The slowest group always has two regulars running it, so if it's your first time you will have company the whole way.\n\nAfterwards most of us walk over to the hawker centre for kopi. No obligation, but it's where people actually get to know each other.",
+      "solo_friendly": "yes",
+      "newcomer_norm": "common",
+      "pressure_level": "drop_in",
+      "conversation_load": "light",
+      "group_size": "medium",
+      "intensity": "moderate",
+      "social_after": true,
+      "cost_band": "free",
+      "price_min": 0,
+      "currency": "SGD",
+      "organiser": {
+        "name": "East Coast Run Club",
+        "slug": "ecrc"
+      },
+      "venue": {
+        "name": "East Coast Park Area C",
+        "nearest_mrt": "Bedok",
+        "region": "east"
+      },
+      "next_session": "2026-09-07T23:00:00Z",
+      "hero_image": null,
+      "booking_url": null,
+      "source_url": "https://example.sg/ecrc"
+    },
+    {
+      "id": "a2",
+      "slug": "padel-open-play",
+      "title": "Padel Open Play",
+      "category": {
+        "name": "Racket & court",
+        "slug": "racket-court"
+      },
+      "summary": "Rotating doubles at Kallang. Turn up on your own \u2014 the format pairs you with whoever is there.",
+      "description": "Open play means you do not need to bring three friends. Everyone rotates through partners every eight minutes.",
+      "solo_friendly": "yes",
+      "newcomer_norm": "occasional",
+      "pressure_level": "rsvp",
+      "conversation_load": "light",
+      "group_size": "small",
+      "intensity": "moderate",
+      "social_after": false,
+      "cost_band": "20_to_50",
+      "price_min": 32,
+      "price_max": 32,
+      "currency": "SGD",
+      "organiser": {
+        "name": "Padel Movement",
+        "slug": "pm"
+      },
+      "venue": {
+        "name": "Kallang Padel Courts",
+        "nearest_mrt": "Stadium",
+        "region": "central"
+      },
+      "next_session": "2026-09-09T11:00:00Z",
+      "hero_image": null,
+      "booking_url": "https://example.sg/padel"
+    },
+    {
+      "id": "a3",
+      "slug": "sunrise-sea-swim",
+      "title": "Sunrise Sea Swim",
+      "category": {
+        "name": "Water",
+        "slug": "water"
+      },
+      "summary": "Open-water swim off Sentosa, 6.45am. Safety kayak on the water; wear a tow float.",
+      "solo_friendly": "probably",
+      "newcomer_norm": "rare",
+      "pressure_level": "drop_in",
+      "conversation_load": "parallel",
+      "group_size": "intimate",
+      "intensity": "vigorous",
+      "social_after": true,
+      "cost_band": "free",
+      "price_min": 0,
+      "currency": "SGD",
+      "organiser": {
+        "name": "Sunrise Swimmers",
+        "slug": "ss"
+      },
+      "venue": {
+        "name": "Tanjong Beach",
+        "nearest_mrt": "HarbourFront",
+        "region": "central"
+      },
+      "next_session": "2026-09-10T22:45:00Z",
+      "hero_image": null
+    },
+    {
+      "id": "a4",
+      "slug": "beginner-bouldering-social",
+      "title": "Beginner Bouldering Social",
+      "category": {
+        "name": "Climbing & movement",
+        "slug": "climbing-movement"
+      },
+      "summary": "A two-hour session for people who have never climbed. Shoes included, no partner needed.",
+      "solo_friendly": "yes",
+      "newcomer_norm": "common",
+      "pressure_level": "rsvp",
+      "conversation_load": "conversational",
+      "group_size": "small",
+      "intensity": "moderate",
+      "social_after": true,
+      "cost_band": "20_to_50",
+      "price_min": 38,
+      "currency": "SGD",
+      "organiser": {
+        "name": "Upwall",
+        "slug": "upwall"
+      },
+      "venue": {
+        "name": "Upwall Bukit Timah",
+        "nearest_mrt": "King Albert Park",
+        "region": "west"
+      },
+      "next_session": "2026-09-11T11:30:00Z",
+      "hero_image": null
+    },
+    {
+      "id": "a5",
+      "slug": "hyrox-prep-sessions",
+      "title": "HYROX Prep \u2014 6 week block",
+      "category": {
+        "name": "Strength & studio",
+        "slug": "strength-studio"
+      },
+      "summary": "Six weeks of structured sessions building to race day. Commit to the block, not a drop-in.",
+      "solo_friendly": "probably",
+      "newcomer_norm": "occasional",
+      "pressure_level": "commit",
+      "conversation_load": "light",
+      "group_size": "small",
+      "intensity": "competitive",
+      "social_after": false,
+      "cost_band": "over_100",
+      "price_min": 240,
+      "currency": "SGD",
+      "organiser": {
+        "name": "Kallang Strength",
+        "slug": "ks"
+      },
+      "venue": {
+        "name": "Kallang Strength",
+        "nearest_mrt": "Kallang",
+        "region": "central"
+      },
+      "next_session": "2026-09-14T01:00:00Z",
+      "hero_image": null
+    },
+    {
+      "id": "a6",
+      "slug": "park-connector-walk",
+      "title": "Saturday Park Connector Walk",
+      "category": {
+        "name": "Outdoor & walking",
+        "slug": "outdoor-walking"
+      },
+      "summary": "A gentle 5km walk with plenty of stopping. Good if a run feels like too much.",
+      "solo_friendly": "yes",
+      "newcomer_norm": "common",
+      "pressure_level": "drop_in",
+      "conversation_load": "conversational",
+      "group_size": "medium",
+      "intensity": "gentle",
+      "social_after": true,
+      "cost_band": "free",
+      "price_min": 0,
+      "currency": "SGD",
+      "organiser": {
+        "name": "Slow Sunday SG",
+        "slug": "sssg"
+      },
+      "venue": {
+        "name": "Bishan-Ang Mo Kio Park",
+        "nearest_mrt": "Bishan",
+        "region": "central"
+      },
+      "next_session": "2026-09-12T01:00:00Z",
+      "hero_image": null
+    }
+  ],
+  "sessions": [
+    {
+      "id": "s1",
+      "activity": "a1",
+      "starts_at": "2026-09-07T23:00:00Z",
+      "status": "scheduled"
+    },
+    {
+      "id": "s2",
+      "activity": "a1",
+      "starts_at": "2026-09-14T23:00:00Z",
+      "status": "scheduled"
+    },
+    {
+      "id": "s3",
+      "activity": "a1",
+      "starts_at": "2026-09-21T23:00:00Z",
+      "status": "scheduled"
+    },
+    {
+      "id": "s4",
+      "activity": "a2",
+      "starts_at": "2026-09-09T11:00:00Z",
+      "status": "scheduled"
+    }
+  ],
+  "activity_interest_stats": [
+    {
+      "activity": "a1",
+      "interested_count": 14,
+      "first_timer_count": 5
+    },
+    {
+      "activity": "a2",
+      "interested_count": 6,
+      "first_timer_count": 2
+    }
+  ],
+  "categories": [
+    {
+      "name": "Running & endurance",
+      "slug": "running-endurance"
+    },
+    {
+      "name": "Racket & court",
+      "slug": "racket-court"
+    },
+    {
+      "name": "Team & pickup",
+      "slug": "team-pickup"
+    },
+    {
+      "name": "Strength & studio",
+      "slug": "strength-studio"
+    },
+    {
+      "name": "Water",
+      "slug": "water"
+    },
+    {
+      "name": "Climbing & movement",
+      "slug": "climbing-movement"
+    },
+    {
+      "name": "Outdoor & walking",
+      "slug": "outdoor-walking"
+    },
+    {
+      "name": "Mind & body",
+      "slug": "mind-body"
+    }
+  ],
+  "coaches": [
+    {
+      "id": "c1",
+      "slug": "aisha-r",
+      "display_name": "Aisha R.",
+      "headline": "Marathon and half-marathon coaching, East Coast based",
+      "coach_type": "professional",
+      "verification_status": "documents_checked",
+      "rate_min": 120,
+      "rate_unit": "session",
+      "currency": "SGD",
+      "offers_free_intro": false
+    },
+    {
+      "id": "c2",
+      "slug": "wei-ming",
+      "display_name": "Wei Ming",
+      "headline": "Ran my first 10k three years ago. Happy to pace anyone doing theirs.",
+      "coach_type": "peer",
+      "verification_status": "self_declared",
+      "rate_min": 0,
+      "rate_unit": "session",
+      "currency": "SGD",
+      "offers_free_intro": true
+    },
+    {
+      "id": "c3",
+      "slug": "priya-n",
+      "display_name": "Priya N.",
+      "headline": "Padel \u2014 technique for beginners and improvers",
+      "coach_type": "professional",
+      "verification_status": "documents_checked",
+      "rate_min": 90,
+      "rate_max": 110,
+      "rate_unit": "hour",
+      "currency": "SGD",
+      "offers_free_intro": true
+    }
+  ]
+}
