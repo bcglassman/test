@@ -40,6 +40,7 @@ to prepare for one.
 | `docs/deployment.md` | Running it on DigitalOcean App Platform |
 | `docs/site.md` | The public site: routes, UI rules, and how to run it locally |
 | `docs/telegram-setup.md` | Creating the bot and channel, and the three values to save |
+| `docs/runbook.md` | **Start here to launch** — accounts, deploy, first post, supply |
 | `schema/001_init.sql` | Postgres DDL for the core model, Directus-compatible |
 | `schema/002_accounts_and_supply.sql` | Accounts, interests, social proof, submissions, organiser claims |
 | `schema/003_assisted_publish_and_coaches.sql` | Assisted publishing state, coach directory and enquiries |
