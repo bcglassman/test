@@ -1,7 +1,38 @@
 # Launch runbook
 
-From an empty DigitalOcean account to the first live Telegram post. Five phases, in
-order. Phases 1–3 are a focused day; phase 4 takes weeks and is the actual business.
+From an empty DigitalOcean account to the first live Telegram post. Every step says what
+to do and why it matters.
+
+---
+
+## First: what the pieces actually are
+
+Six moving parts. Here is each in plain terms.
+
+| Part | In plain terms | What it does |
+|---|---|---|
+| **PostgreSQL** | The filing cabinet | Every event, club, venue and sign-up lives here as rows in tables. No screen — just organised storage. |
+| **Directus** | The admin screen bolted onto the filing cabinet | A website you log into that shows the database as editable forms. Where you review, confirm and approve. Nobody outside your team sees it. |
+| **The worker** | A robot that does chores on a timer | Small programs that wake, do one job, and stop: fetch events, judge them, pick tomorrow's post, write copy, send it. |
+| **The site (Next.js)** | The shop window | The public site at meetinmotion.sg. Reads from Directus, shows only what you approved. |
+| **App Platform** | The landlord | DigitalOcean's service that runs all of the above. You hand it a config file; it keeps things running. |
+| **Spaces** | The storage shed | Where uploaded files live. Separate on purpose: app machines get wiped and replaced constantly. |
+
+**The shape to hold in your head:** the worker *puts things in* the filing cabinet. You
+*approve* them through Directus. The site *shows* what you approved. Nothing reaches the
+public without passing through you — that is not caution, it is the product promise.
+
+### Words you will keep seeing
+
+- **Environment variable** — a setting handed to a program when it starts, rather than
+  written inside it. Passwords and keys live here so they never end up in the code.
+- **Migration** — a file that changes the database's *shape* (adds a table or column),
+  applied once each, in order, and recorded. How the filing cabinet gets new drawers
+  without anyone doing it by hand and forgetting.
+- **Token / API key** — a long password a program uses instead of a human login. Different
+  tokens have different powers: the site's can only read; the bot's can post to your channel.
+- **DNS** — the internet's phone book. Turns `meetinmotion.sg` into the address of the
+  machine serving your site. Changes take minutes to hours to spread; that delay is normal.
 
 ---
 
@@ -11,6 +42,8 @@ order. Phases 1–3 are a focused day; phase 4 takes weeks and is the actual bus
 to individuals; `.com.sg` requires an ACRA-registered entity — confirm which you are
 buying before paying. The domain is baked into every generated post, every canonical link
 and Directus's public URL, so it is not a "sort out later".
+
+> **Why.** Posts already sent to Telegram carry links. Change the domain later and old posts point at a dead site.
 
 **1.2 Merge the branch to main.** The deploy spec builds from `main`.
 
@@ -27,8 +60,12 @@ print your account.
 **Not optional** — App Platform disk is ephemeral, and with local storage every uploaded
 image disappears on the next deploy, silently.
 
+> **Why.** App Platform replaces the machine on every deploy. Anything on its disk goes with it, with no error message.
+
 **1.5 Telegram bot and channel.** See `telegram-setup.md`. The one that catches everyone:
 a bot cannot post to a channel it does not administer, and the error says "chat not found".
+
+> **Why.** A channel is one-way — you broadcast, people read, no moderation to run. You need your own chat ID because a bot can never message you first; that is Telegram stopping bots spamming strangers.
 
 **1.6 Anthropic API key.** console.anthropic.com, for the enrichment and copy passes.
 
@@ -41,6 +78,8 @@ a bot cannot post to a channel it does not administer, and the error says "chat 
 
 **2.2 Create the app.** `doctl apps create --spec .do/app.yaml`. The first build fails
 until secrets are set — expected.
+
+> **Why.** `.do/app.yaml` describes the whole setup in one file. That is the difference between infrastructure you can rebuild and infrastructure that exists because someone clicked things once.
 
 **2.3 Set the secrets** in the console, then redeploy:
 
@@ -56,6 +95,8 @@ until secrets are set — expected.
 
 **2.4 Confirm migrations ran.** The `migrate` job log should list `001_init.sql` through
 `005_seed_singapore_clubs.sql`.
+
+> **Why.** Your database started empty. This built every table, before anything served traffic, so the app can never start expecting a table that is not there.
 
 **2.5 Log into Directus** at `/admin` and change the admin password — it came from an
 environment variable and is now in your deploy history.
@@ -77,6 +118,8 @@ collection, and you can add it by hand in Data Model settings and re-run.
 **2.7 Create a read token for the site.** Read-only access to published activities,
 sessions, categories, coaches and the interest-stats view. Put it in `DIRECTUS_TOKEN`.
 Read-only matters: this token lives in the site's server environment.
+
+> **Why.** The site is the part exposed to the whole internet. Read-only means a compromise reads public data rather than rewriting your listings.
 
 **2.8 Point the domain.** Add it in App Platform, follow the DNS instructions.
 `https://meetinmotion.sg` should show the site — most likely with an honest "Nothing
