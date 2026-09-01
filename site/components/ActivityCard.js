@@ -1,4 +1,5 @@
 import AttributeChips from './AttributeChips';
+import CategoryPlate from './CategoryPlate';
 import { assetUrl } from '../lib/directus';
 import { priceLabel, formatSession, relativeDay, REGION_LABEL } from '../lib/format';
 
@@ -13,11 +14,13 @@ export default function ActivityCard({ activity }) {
 
   return (
     <article className="card">
-      {image && (
+      {image ? (
         <div className="card-media">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={image} alt="" loading="lazy" />
         </div>
+      ) : (
+        <CategoryPlate category={activity.category} />
       )}
       <div className="card-body">
         <AttributeChips activity={activity} limit={3} />

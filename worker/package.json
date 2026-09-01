@@ -12,7 +12,9 @@
     "variants": "node src/index.mjs variants",
     "migrate": "node src/migrate.mjs",
     "sources": "node src/index.mjs sources",
-    "test": "node --test --test-concurrency=1 'test/*.test.mjs'"
+    "test": "node --test --test-concurrency=1 'test/*.test.mjs'",
+    "publish": "node src/index.mjs publish",
+    "remind": "node src/index.mjs remind"
   },
   "engines": {
     "node": ">=20"

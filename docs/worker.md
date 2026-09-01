@@ -155,3 +155,24 @@ Add it to the cron after scheduling:
 ```
 0 5 * * *  worker  node src/index.mjs variants --limit 20
 ```
+
+## Publishing
+
+```sh
+node src/index.mjs publish --dry-run
+node src/index.mjs publish
+node src/index.mjs remind        # nudge anything still waiting on a person
+```
+
+Sends approved variants of posts due today. API channels (Telegram) go out immediately;
+assisted channels (WhatsApp) are queued with a single-use link messaged to the admin.
+
+**The publication row is written before any channel API is called.** If the process dies
+mid-send, the row exists and the unique constraint on `(post, channel)` stops a restart
+sending the same post twice. There is a test that runs two publishes concurrently and
+asserts the channel API was called exactly once.
+
+A failure is recorded with its error and retried on the next run. Rate limiting from
+Telegram is marked retryable rather than treated as a rejection.
+
+See `docs/telegram-setup.md` for creating the bot and channel.

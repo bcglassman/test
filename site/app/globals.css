@@ -215,3 +215,20 @@ footer.site-footer {
   border-top: 1px solid var(--line); margin-top: 3rem;
   padding: 2rem 0 3rem; color: var(--ink-faint); font-size: .9rem;
 }
+
+/* ---- image-less cards ----
+   With no photography, the category does the visual work: a tinted plate
+   carrying the activity name in display type. Better than a grey placeholder,
+   and it makes a wall of cards scannable by colour. */
+.plate {
+  aspect-ratio: 16 / 7;
+  display: flex; align-items: flex-end;
+  padding: .9rem 1.05rem;
+  background: var(--plate-bg, var(--primary-soft));
+  border-bottom: 1px solid var(--line);
+}
+.plate span {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: .74rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--plate-ink, var(--primary));
+}

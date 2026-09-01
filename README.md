@@ -39,10 +39,12 @@ to prepare for one.
 | `docs/channel-copy.md` | Per-channel copy generation, validation and the repair round |
 | `docs/deployment.md` | Running it on DigitalOcean App Platform |
 | `docs/site.md` | The public site: routes, UI rules, and how to run it locally |
+| `docs/telegram-setup.md` | Creating the bot and channel, and the three values to save |
 | `schema/001_init.sql` | Postgres DDL for the core model, Directus-compatible |
 | `schema/002_accounts_and_supply.sql` | Accounts, interests, social proof, submissions, organiser claims |
 | `schema/003_assisted_publish_and_coaches.sql` | Assisted publishing state, coach directory and enquiries |
 | `schema/004_variant_notes.sql` | Why a generated variant was rejected |
+| `schema/005_seed_singapore_clubs.sql` | The starting club ecosystem, and which channels are live |
 | `schema/tests/` | Executable checks for the invariants the migrations enforce |
 | `docker-compose.yml` | Postgres, Redis and Directus for local development |
 | `.do/app.yaml` | DigitalOcean App Platform spec — services, scheduled jobs, database |
@@ -70,8 +72,8 @@ See `docs/directus-setup.md`.
 
 ## Status
 
-Schema, Directus configuration, the worker (ingest, enrichment, daily post job,
-channel copy), the public site, and the DigitalOcean deployment spec.
+The pipeline is complete end to end: ingest → enrich → schedule → channel copy →
+publish, plus the public site and the DigitalOcean deployment spec.
 
-The publish worker — pushing to Telegram and the assisted-WhatsApp page — is the
-remaining piece before posts actually go out.
+Nothing is deployed and no real source has been ingested yet. See
+`docs/deployment.md` and `docs/telegram-setup.md` for what that takes.

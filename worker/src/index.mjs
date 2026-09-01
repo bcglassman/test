@@ -17,6 +17,7 @@ import { createModelCaller, DEFAULT_MODEL, DEFAULT_EFFORT } from './enrich/claud
 import { scheduleDays, findGaps, report, tomorrow, today } from './schedule/run.mjs';
 import { generateVariants } from './variants/run.mjs';
 import { createVariantWriter, DEFAULT_MODEL as VARIANT_MODEL, DEFAULT_EFFORT as VARIANT_EFFORT } from './variants/claude.mjs';
+import { publishDue, remindPending } from './publish/run.mjs';
 
 const ADAPTERS = new Map([[eventbrite.key, eventbrite]]);
 
@@ -158,6 +159,20 @@ async function variants(pool) {
   }
 }
 
+async function publish(pool) {
+  const dryRun = has('dry-run');
+  log.step(`publish${dryRun ? ' — dry run' : ''}`);
+  const stats = await publishDue(pool, { dryRun });
+  log.info(`\n  ${stats.due} due · ${stats.sent} sent · ${stats.awaiting} awaiting you · ` +
+           `${stats.failed} failed · ${stats.skipped} already handled`);
+  if (stats.failed > 0) process.exitCode = 1;
+}
+
+async function remind(pool) {
+  const { reminded } = await remindPending(pool);
+  log.info(reminded === 0 ? 'Nothing waiting to be sent.' : `Nudged ${reminded} unsent post(s).`);
+}
+
 async function main() {
   const command = process.argv[2];
   const pool = createPool();
@@ -168,13 +183,17 @@ async function main() {
     else if (command === 'schedule') await schedule(pool);
     else if (command === 'gaps') await gaps(pool);
     else if (command === 'variants') await variants(pool);
+    else if (command === 'publish') await publish(pool);
+    else if (command === 'remind') await remind(pool);
     else {
-      console.log('Usage: node src/index.mjs <sources|ingest|enrich|schedule|gaps|variants> [options]\n' +
+      console.log('Usage: node src/index.mjs <sources|ingest|enrich|schedule|gaps|variants|publish|remind> [options]\n' +
                   '  ingest    [--source <slug>] [--dry-run]\n' +
                   '  enrich    [--limit <n>] [--model <id>] [--effort <level>] [--dry-run]\n' +
                   '  schedule  [--from <YYYY-MM-DD>] [--days <n>] [--dry-run]\n' +
                   '  gaps      [--from <YYYY-MM-DD>] [--days <n>]\n' +
-                  '  variants  [--limit <n>] [--model <id>] [--effort <level>] [--dry-run]');
+                  '  variants  [--limit <n>] [--model <id>] [--effort <level>] [--dry-run]\n' +
+                  '  publish   [--dry-run]\n' +
+                  '  remind');
       process.exitCode = 1;
     }
   } finally {
